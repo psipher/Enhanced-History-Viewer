@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Enhanced History Viewer",
+  "version": "1.1",
+  "description": "View your browsing history with full URLs and improved design",
+  "permissions": ["history", "favicon"],
+  "host_permissions": ["<all_urls>"],
+  "chrome_url_overrides": {
+    "history": "history.html"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
+

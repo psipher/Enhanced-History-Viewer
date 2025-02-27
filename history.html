@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>History</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap">
+  <style>
+    :root {
+      --background: #fff;
+      --surface: #fff;
+      --text-primary: #202124;
+      --text-secondary: #5f6368;
+      --border: #dadce0;
+      --hover: #f8f9fa;
+      --active: #e8f0fe;
+      --link: #1a73e8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #202124;
+        --surface: #292a2d;
+        --text-primary: #e8eaed;
+        --text-secondary: #9aa0a6;
+        --border: #3c4043;
+        --hover: #35363a;
+        --active: #202124;
+        --link: #8ab4f8;
+      }
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--background);
+      color: var(--text-primary);
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+    }
+
+    .container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 256px;
+      padding: 20px;
+      border-right: 1px solid var(--border);
+      position: fixed;
+      height: 100vh;
+      background: var(--background);
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 296px;
+      padding: 20px;
+      max-width: 900px;
+    }
+
+    .search-bar {
+      margin-bottom: 24px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-bar input {
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 16px;
+      width: 100%;
+      margin-left: 8px;
+      outline: none;
+    }
+
+    .date-group {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+
+    .date-header {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      padding: 8px 16px;
+      margin: -16px -16px 16px -16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      margin: 0 -16px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .history-item:hover {
+      background: var(--hover);
+    }
+
+    .favicon {
+      width: 20px;
+      height: 20px;
+      margin-right: 16px;
+      flex-shrink: 0;
+    }
+
+    .item-details {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .title {
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .url {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .time {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      margin-left: 16px;
+      flex-shrink: 0;
+    }
+
+    .menu-button {
+      opacity: 0;
+      padding: 8px;
+      margin: -8px;
+      border-radius: 50%;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    .history-item:hover .menu-button {
+      opacity: 1;
+    }
+
+    .menu-button:hover {
+      background: var(--hover);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: var(--hover);
+    }
+
+    .nav-item.active {
+      background: var(--active);
+      color: var(--link);
+    }
+
+    .nav-icon {
+      margin-right: 12px;
+      width: 20px;
+      height: 20px;
+    }
+    .no-results {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+    .search-bar svg {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M13.5 8H12v5l4.28 2.54.72-1.21-3.5-2.08V8M13 3a9 9 0 0 0-9 9H1l3.96 4.03L9 12H6a7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.896 8.896 0 0 0 13 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9"></path>
+        </svg>
+        Chrome history
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 10h2v2H9zm0 4h2v2H9zm4-4h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4 0h2v2h-2z"></path>
+        </svg>
+        Tabs from other devices
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="search-bar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+        </svg>
+        <input type="text" placeholder="Search history">
+      </div>
+      <div id="content"></div>
+      <div id="loading" class="loading" style="display: none;">Loading more history...</div>
+    </div>
+  </div>
+  <script src="history.js"></script>
+</body>
+</html>
+
