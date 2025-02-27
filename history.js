@@ -205,6 +205,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Load initial history
   loadMoreHistory()
+
+  // Add click handler for "Delete browsing data"
+  const deleteDataButton = document.getElementById("delete-data")
+  deleteDataButton.addEventListener("click", () => {
+    chrome.tabs.create({ url: "chrome://settings/clearBrowserData" })
+  })
 })
 
 window.addEventListener("scroll", () => {
