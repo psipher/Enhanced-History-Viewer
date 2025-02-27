@@ -102,10 +102,16 @@
       margin: 0 -16px;
       cursor: pointer;
       position: relative;
+      transition: background-color 0.2s;
     }
 
     .history-item:hover {
       background: var(--hover);
+    }
+
+    .menu-button,
+    .menu-button:hover {
+      display: none;
     }
 
     .favicon {
@@ -144,22 +150,6 @@
       flex-shrink: 0;
     }
 
-    .menu-button {
-      opacity: 0;
-      padding: 8px;
-      margin: -8px;
-      border-radius: 50%;
-      cursor: pointer;
-      margin-left: 8px;
-    }
-
-    .history-item:hover .menu-button {
-      opacity: 1;
-    }
-
-    .menu-button:hover {
-      background: var(--hover);
-    }
 
     .loading {
       text-align: center;

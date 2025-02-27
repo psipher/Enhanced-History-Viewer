@@ -39,6 +39,11 @@ function createHistoryItem(item) {
   const div = document.createElement("div")
   div.className = "history-item"
 
+  // Add click handler to open URL in new tab
+  div.addEventListener("click", () => {
+    window.open(item.url, "_blank")
+  })
+
   const favicon = document.createElement("img")
   favicon.className = "favicon"
   favicon.src = getFaviconUrl(item.url)
