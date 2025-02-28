@@ -211,6 +211,13 @@ document.addEventListener("DOMContentLoaded", () => {
   deleteDataButton.addEventListener("click", () => {
     chrome.tabs.create({ url: "chrome://settings/clearBrowserData" })
   })
+
+  // Add click handler for "Tabs from other devices"
+  const syncedTabsButton = document.getElementById("synced-tabs")
+  syncedTabsButton.addEventListener("click", () => {
+    // Use chrome://sync-internals instead of chrome://history/syncedTabs
+    chrome.tabs.create({ url: "chrome://sync-internals" })
+  })
 })
 
 window.addEventListener("scroll", () => {
