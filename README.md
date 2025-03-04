@@ -26,13 +26,12 @@ After installation, the extension will automatically replace Chrome's default hi
 - Using the keyboard shortcut (Ctrl+H on Windows/Linux, Cmd+Y on Mac).
 - Typing `chrome://history` in the address bar.
 
-## Development
+## In Development
 
-To modify or enhance this extension:
-
-1. Make changes to the relevant files (`manifest.json`, `history.html`, `history.js`, `background.js`).
-2. Reload the extension in `chrome://extensions`.
-3. Test your changes by opening the history page.
+1. Make square boxes on left to select links, and delete the history
+2. three button option with more history and copy link
+3. Iniital page to configure this extension more easily.
+4. Fix icons for custom sites
 
 ## Contributing
 
