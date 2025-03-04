@@ -198,6 +198,49 @@
     .nav-item:hover .external-link {
       opacity: 1;
     }
+    .account-notice {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      padding: 16px 20px;
+      background: var(--background);
+      border-top: 1px solid var(--border);
+      width: 256px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.54);
+      line-height: 1.5;
+      z-index: 10;
+      display: flex;
+      align-items: flex-start;
+    }
+    
+    .account-notice svg {
+      width: 18px;
+      height: 18px;
+      margin-right: 16px;
+      flex-shrink: 0;
+      fill: currentColor;
+    }
+    
+    .account-notice-text {
+      flex: 1;
+    }
+    
+    .account-notice a {
+      color: #8ab4f8;
+      text-decoration: none;
+    }
+    
+    .account-notice a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .account-notice {
+        position: static;
+        width: auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -235,6 +278,15 @@
       </div>
       <div id="content"></div>
       <div id="loading" class="loading" style="display: none;">Loading more history...</div>
+    </div>
+    <div class="account-notice">
+      <svg viewBox="0 0 24 24">
+        <path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"></path>
+      </svg>
+      <div class="account-notice-text">
+        Your Google Account may have other forms of browsing history at
+        <a href="https://myactivity.google.com">myactivity.google.com</a>
+      </div>
     </div>
   </div>
   <script src="history.js"></script>
