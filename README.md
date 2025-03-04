@@ -9,7 +9,6 @@ Enhanced History Viewer is a Chrome extension that replaces the default history 
 - **Date Grouping**: History items are grouped by date (Today, Yesterday, and earlier dates) for easy navigation.
 - **Fast Search**: Quickly find specific history items with responsive search functionality.
 - **Infinite Scrolling**: Easily browse through your entire history without pagination.
-- **Favicon Display**: Visual representation of each site with favicon support.
 - **Chrome Integration**: Seamlessly replaces Chrome's built-in history page.
 
 ## Installation
