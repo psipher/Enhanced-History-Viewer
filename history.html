@@ -55,14 +55,25 @@
       margin-left: 296px;
       padding: 20px;
       max-width: 900px;
+      margin-right: auto;
+      margin-left: auto;
+      width: 100%;
+    }
+
+    .search-container {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto 24px auto;
     }
 
     .search-bar {
-      margin-bottom: 24px;
+      width: 100%;
       padding: 12px 16px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 24px;
       display: flex;
       align-items: center;
     }
@@ -84,6 +95,9 @@
       margin-bottom: 16px;
       box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
       border: 1px solid var(--border);
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .date-header {
@@ -235,6 +249,11 @@
       text-decoration: underline;
     }
 
+    #content {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
     @media (max-width: 768px) {
       .account-notice {
         position: static;
@@ -264,11 +283,13 @@
       </div>
     </div>
     <div class="main-content">
-      <div class="search-bar">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
-        </svg>
-        <input type="text" placeholder="Search history">
+      <div class="search-container">
+        <div class="search-bar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+          </svg>
+          <input type="text" placeholder="Search history">
+        </div>
       </div>
       <div id="content"></div>
       <div id="loading" class="loading" style="display: none;">Loading more history...</div>
