@@ -33,13 +33,18 @@ if (typeof chrome === "undefined") {
 }
 
 function formatDate(date) {
+  // Create date objects with time set to midnight for proper day comparison
+  const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  
   const now = new Date()
-  const yesterday = new Date(now)
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  
+  const yesterday = new Date(todayDate)
   yesterday.setDate(yesterday.getDate() - 1)
-
-  if (date.toDateString() === now.toDateString()) {
+  
+  if (itemDate.getTime() === todayDate.getTime()) {
     return "Today"
-  } else if (date.toDateString() === yesterday.toDateString()) {
+  } else if (itemDate.getTime() === yesterday.getTime()) {
     return "Yesterday"
   } else {
     return date.toLocaleDateString(undefined, {
@@ -266,6 +271,20 @@ function groupHistoryByDate(items) {
 }
 
 function renderHistoryGroup(date, items, container) {
+  // Check if a group with this date already exists
+  const existingGroup = Array.from(container.children).find((el) => 
+    el.querySelector(".date-header")?.textContent === date
+  )
+  
+  if (existingGroup) {
+    // Add items to existing group
+    items.forEach((item) => {
+      existingGroup.appendChild(createHistoryItem(item))
+    })
+    return
+  }
+  
+  // Create new group
   const group = document.createElement("div")
   group.className = "date-group"
 
@@ -307,10 +326,26 @@ function loadMoreHistory() {
       const content = document.getElementById("content")
 
       if (items && items.length > 0) {
+        // Sort items by date (newest first)
+        items.sort((a, b) => b.lastVisitTime - a.lastVisitTime)
+        
         const groups = groupHistoryByDate(items)
 
-        Object.entries(groups).forEach(([date, dateItems]) => {
-          renderHistoryGroup(date, dateItems, content)
+        // Sort date groups - Today, Yesterday, then other dates in reverse chronological order
+        const sortedDates = Object.keys(groups).sort((a, b) => {
+          if (a === "Today") return -1
+          if (b === "Today") return 1
+          if (a === "Yesterday") return -1
+          if (b === "Yesterday") return 1
+          
+          // For other dates, convert to date objects and compare
+          const dateA = new Date(a)
+          const dateB = new Date(b)
+          return dateB - dateA
+        })
+
+        sortedDates.forEach((date) => {
+          renderHistoryGroup(date, groups[date], content)
         })
 
         lastFetchedTime = items[items.length - 1].lastVisitTime - 1
@@ -391,4 +426,3 @@ window.addEventListener("scroll", () => {
     loadMoreHistory()
   }
 })
-
