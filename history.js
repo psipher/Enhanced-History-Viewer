@@ -5,6 +5,33 @@ let searchQuery = ""
 let searchTimeout
 const currentView = "history"
 
+// Check if chrome is defined, if not, mock it for testing purposes
+if (typeof chrome === "undefined") {
+  global.chrome = {
+    history: {
+      search: (query, callback) => {
+        // Mock implementation for testing
+        console.warn("Mock chrome.history.search called.  Returning empty array.")
+        callback([])
+      },
+      deleteUrl: (details, callback) => {
+        // Mock implementation for testing
+        console.warn("Mock chrome.history.deleteUrl called.")
+        callback()
+      },
+    },
+    tabs: {
+      create: (options) => {
+        // Mock implementation for testing
+        console.warn("Mock chrome.tabs.create called with URL:", options.url)
+      },
+    },
+    runtime: {
+      lastError: null, // Initialize lastError to null
+    },
+  }
+}
+
 function formatDate(date) {
   const now = new Date()
   const yesterday = new Date(now)
@@ -35,12 +62,54 @@ function getFaviconUrl(url) {
   return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`
 }
 
+function showNotification(message) {
+  // Remove any existing notifications
+  const existingNotifications = document.querySelectorAll(".notification")
+  existingNotifications.forEach((notification) => notification.remove())
+
+  // Create and show the notification
+  const notification = document.createElement("div")
+  notification.className = "notification"
+  notification.textContent = message
+  document.body.appendChild(notification)
+
+  // Remove the notification after 2 seconds
+  setTimeout(() => {
+    notification.remove()
+  }, 2000)
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll(".dropdown-menu.show").forEach((menu) => {
+    menu.classList.remove("show")
+  })
+}
+
+// Create a single dropdown menu that will be reused
+let globalDropdownMenu = null
+
+function createGlobalDropdownMenu() {
+  if (globalDropdownMenu) return globalDropdownMenu
+
+  const dropdownMenu = document.createElement("div")
+  dropdownMenu.className = "dropdown-menu"
+  document.body.appendChild(dropdownMenu)
+
+  globalDropdownMenu = dropdownMenu
+  return dropdownMenu
+}
+
 function createHistoryItem(item) {
   const div = document.createElement("div")
   div.className = "history-item"
+  div.setAttribute("data-url", item.url)
 
   // Add click handler to open URL in new tab
-  div.addEventListener("click", () => {
+  div.addEventListener("click", (e) => {
+    // Don't open the URL if clicking on the menu button or menu items
+    if (e.target.closest(".menu-button") || e.target.closest(".dropdown-menu")) {
+      return
+    }
     window.open(item.url, "_blank")
   })
 
@@ -74,6 +143,101 @@ function createHistoryItem(item) {
       <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
     </svg>
   `
+
+  // Toggle dropdown on menu button click
+  menuButton.addEventListener("click", (e) => {
+    e.stopPropagation()
+
+    // Get or create the global dropdown menu
+    const dropdownMenu = createGlobalDropdownMenu()
+
+    // Clear previous content
+    dropdownMenu.innerHTML = ""
+
+    // Add menu items
+    const moreFromSite = document.createElement("div")
+    moreFromSite.className = "dropdown-item"
+    moreFromSite.textContent = "More from this site"
+    moreFromSite.addEventListener("click", (e) => {
+      e.stopPropagation()
+      const hostname = new URL(item.url).hostname
+      const searchInput = document.querySelector(".search-bar input")
+      searchInput.value = hostname
+      performSearch()
+      closeAllDropdowns()
+    })
+
+    const removeFromHistory = document.createElement("div")
+    removeFromHistory.className = "dropdown-item"
+    removeFromHistory.textContent = "Remove from history"
+    removeFromHistory.addEventListener("click", (e) => {
+      e.stopPropagation()
+      chrome.history.deleteUrl({ url: item.url }, () => {
+        // Find all history items with this URL and remove them
+        document.querySelectorAll(`.history-item[data-url="${item.url}"]`).forEach((el) => {
+          el.remove()
+        })
+
+        // Show notification
+        showNotification("Removed from history")
+
+        // Check if the date group is now empty and remove it if so
+        document.querySelectorAll(".date-group").forEach((group) => {
+          if (group.querySelectorAll(".history-item").length === 0) {
+            group.remove()
+          }
+        })
+      })
+      closeAllDropdowns()
+    })
+
+    const copyUrl = document.createElement("div")
+    copyUrl.className = "dropdown-item"
+    copyUrl.textContent = "Copy URL"
+    copyUrl.addEventListener("click", (e) => {
+      e.stopPropagation()
+      navigator.clipboard
+        .writeText(item.url)
+        .then(() => {
+          showNotification("URL copied to clipboard")
+        })
+        .catch((err) => {
+          console.error("Could not copy URL: ", err)
+          showNotification("Failed to copy URL")
+        })
+      closeAllDropdowns()
+    })
+
+    dropdownMenu.appendChild(moreFromSite)
+    dropdownMenu.appendChild(removeFromHistory)
+    dropdownMenu.appendChild(copyUrl)
+
+    // Close any open dropdowns
+    closeAllDropdowns()
+
+    // Show the dropdown
+    dropdownMenu.classList.add("show")
+
+    // Position the dropdown next to the clicked item
+    const rect = div.getBoundingClientRect()
+
+    // Position at the same level as the history item
+    dropdownMenu.style.top = `${rect.top}px`
+    dropdownMenu.style.left = `${rect.right + 10}px`
+
+    // Make sure the dropdown doesn't go off-screen
+    const dropdownRect = dropdownMenu.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+
+    if (dropdownRect.right > viewportWidth) {
+      dropdownMenu.style.left = `${viewportWidth - dropdownRect.width - 20}px`
+    }
+
+    if (dropdownRect.bottom > viewportHeight) {
+      dropdownMenu.style.top = `${rect.top - (dropdownRect.bottom - viewportHeight)}px`
+    }
+  })
 
   details.appendChild(title)
   details.appendChild(url)
@@ -125,7 +289,6 @@ function loadMoreHistory() {
   const loading = document.getElementById("loading")
   loading.style.display = "block"
 
-  //The chrome variable was undeclared.  This line fixes that.
   chrome.history.search(
     {
       text: searchQuery,
@@ -189,6 +352,9 @@ function debounceSearch(func, delay) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Create the global dropdown menu
+  createGlobalDropdownMenu()
+
   // Add search functionality
   const searchInput = document.querySelector(".search-bar input")
 
@@ -210,6 +376,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const deleteDataButton = document.getElementById("delete-data")
   deleteDataButton.addEventListener("click", () => {
     chrome.tabs.create({ url: "chrome://settings/clearBrowserData" })
+  })
+
+  // Close dropdowns when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".menu-button") && !e.target.closest(".dropdown-menu")) {
+      closeAllDropdowns()
+    }
   })
 })
 
