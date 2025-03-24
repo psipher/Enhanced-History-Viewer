@@ -4,7 +4,7 @@
   "version": "1.1",
   "description": "View your Chrome browsing history with full URLs",
   "permissions": ["history", "favicon", "tabs"],
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": ["https://www.google.com/s2/*"],
   "chrome_url_overrides": {
     "history": "history.html"
   },
