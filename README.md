@@ -6,7 +6,6 @@ Enhanced History Viewer is a Chrome extension that replaces the default history 
 
 - **Modern Interface**: Clean, responsive design with support for both light and dark modes.
 - **Full URL Display**: See the complete URL for each history item at a glance.
-- **Date Grouping**: History items are grouped by date (Today, Yesterday, and earlier dates) for easy navigation.
 - **Fast Search**: Quickly find specific history items with responsive search functionality.
 - **Infinite Scrolling**: Easily browse through your entire history without pagination.
 - **Chrome Integration**: Seamlessly replaces Chrome's built-in history page.
@@ -28,10 +27,11 @@ After installation, the extension will automatically replace Chrome's default hi
 
 ## In Development
 
-1. Make square boxes on left to select links, and delete the history
-2. three button option with more history and copy link
-3. Iniital page to configure this extension more easily.
-4. Fix icons for custom sites
+1. Iniital page to configure this extension more easily.
+2. Fix icons for custom sites.
+
+## Pending
+1. Pending review from chrome web store.
 
 ## Contributing
 
