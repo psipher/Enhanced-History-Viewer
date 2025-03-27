@@ -3,7 +3,7 @@
   "name": "Enhanced History Viewer",
   "version": "1.1",
   "description": "View your Chrome browsing history with full URLs",
-  "permissions": ["history", "favicon", "tabs"],
+  "permissions": ["history", "favicon"],
   "host_permissions": ["https://www.google.com/s2/*"],
   "chrome_url_overrides": {
     "history": "history.html"
