@@ -27,7 +27,7 @@ After installation, the extension will automatically replace Chrome's default hi
 
 ## In Development
 
-1. Iniital page to configure this extension more easily.
+1. Initial page to configure this extension more easily.
 2. Fix icons for custom sites.
 
 ## Pending
