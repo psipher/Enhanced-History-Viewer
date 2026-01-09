@@ -2,10 +2,10 @@ let lastFetchedTime = new Date().getTime()
 let isLoading = false
 const ITEMS_PER_PAGE = 50
 let searchQuery = ''
-let searchTimeout
-
 // Check if chrome is defined, if not, mock it for testing purposes
 
+let searchTimeout
+let currentSearchRequestId = 0
 
 function formatDate(date) {
   // Create date objects with time set to midnight for proper day comparison
@@ -84,14 +84,16 @@ function createHistoryItem(item) {
   div.className = 'history-item'
   div.setAttribute('data-url', item.url)
 
-  // Add click handler to open URL in new tab
+  // Add click handler to open URL in new tab ONLY if not clicking checkbox/menu
   div.addEventListener('click', (e) => {
-    // Don't open the URL if clicking on the menu button or menu items
-    if (e.target.closest('.menu-button') || e.target.closest('.dropdown-menu')) {
+    // Don't open the URL if clicking on the menu button, menu items
+    if (e.target.closest('.menu-button') ||
+      e.target.closest('.dropdown-menu')) {
       return
     }
     window.open(item.url, '_blank')
   })
+
 
   const favicon = document.createElement('img')
   favicon.className = 'favicon'
@@ -251,32 +253,32 @@ function renderHistoryGroup(date, items, container) {
     (el) => el.querySelector('.date-header')?.textContent === date
   )
 
+  let targetGroup
   if (existingGroup) {
-    // Add items to existing group
-    items.forEach((item) => {
-      existingGroup.appendChild(createHistoryItem(item))
-    })
-    return
+    targetGroup = existingGroup
+  } else {
+    // Create new group
+    targetGroup = document.createElement('div')
+    targetGroup.className = 'date-group'
+
+    const header = document.createElement('div')
+    header.className = 'date-header'
+    header.textContent = date
+
+    targetGroup.appendChild(header)
+    container.appendChild(targetGroup)
   }
 
-  // Create new group
-  const group = document.createElement('div')
-  group.className = 'date-group'
-
-  const header = document.createElement('div')
-  header.className = 'date-header'
-  header.textContent = date
-
-  group.appendChild(header)
-
   items.forEach((item) => {
-    group.appendChild(createHistoryItem(item))
+    // Deduplication check: Do not append if this URL already exists in the view
+    if (document.querySelector(`.history-item[data-url="${item.url}"]`)) {
+      return
+    }
+    targetGroup.appendChild(createHistoryItem(item))
   })
-
-  container.appendChild(group)
 }
 
-function loadMoreHistory() {
+function loadMoreHistory(requestId) {
   if (isLoading) return
 
   isLoading = true
@@ -291,6 +293,11 @@ function loadMoreHistory() {
       maxResults: ITEMS_PER_PAGE,
     },
     (items) => {
+      // Check if this request is stale
+      if (requestId !== currentSearchRequestId) {
+        return
+      }
+
       if (chrome.runtime.lastError) {
         console.error(chrome.runtime.lastError)
         loading.style.display = 'none'
@@ -346,6 +353,12 @@ function performSearch() {
   // Reset the time to current to start a fresh search
   lastFetchedTime = new Date().getTime()
 
+  // Increment request ID to invalidate any conflicting previous searches
+  currentSearchRequestId++
+
+  // Reset isLoading state so we can immediately start the new search
+  isLoading = false
+
   // Clear existing content
   const content = document.getElementById('content')
   content.innerHTML = ''
@@ -354,8 +367,8 @@ function performSearch() {
   const loading = document.getElementById('loading')
   loading.style.display = 'block'
 
-  // Load history with the search query
-  loadMoreHistory()
+  // Load history with the search query and passing the ID
+  loadMoreHistory(currentSearchRequestId)
 }
 
 function debounceSearch(func, delay) {
@@ -381,8 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Make the search icon clickable
   searchIcon.style.cursor = 'pointer'
 
-  // Load initial history
-  loadMoreHistory()
+  // Load initial history with initial ID
+  loadMoreHistory(currentSearchRequestId)
 
   // Add click handler for "Delete browsing data"
   const deleteDataButton = document.getElementById('delete-data')
@@ -400,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('scroll', () => {
   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000) {
-    loadMoreHistory()
+    loadMoreHistory(currentSearchRequestId)
   }
 })
 

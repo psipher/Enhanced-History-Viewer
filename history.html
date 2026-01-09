@@ -1,441 +1,533 @@
 <!doctype html>
 <html>
-  <head>
-    <title>History</title>
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap"
-    />
-    <style>
+
+<head>
+  <title>History</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap" />
+  <style>
+    :root {
+      --background: #fff;
+      --surface: #fff;
+      --text-primary: #202124;
+      --text-secondary: #5f6368;
+      --border: #dadce0;
+      --hover: #f8f9fa;
+      --active: #e8f0fe;
+      --link: #1a73e8;
+      --dropdown-bg: #2d2d2d;
+    }
+
+    @media (prefers-color-scheme: dark) {
       :root {
-        --background: #fff;
-        --surface: #fff;
-        --text-primary: #202124;
-        --text-secondary: #5f6368;
-        --border: #dadce0;
-        --hover: #f8f9fa;
-        --active: #e8f0fe;
-        --link: #1a73e8;
+        --background: #202124;
+        --surface: #292a2d;
+        --text-primary: #e8eaed;
+        --text-secondary: #9aa0a6;
+        --border: #3c4043;
+        --hover: #35363a;
+        --active: #202124;
+        --link: #8ab4f8;
         --dropdown-bg: #2d2d2d;
       }
+    }
 
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --background: #202124;
-          --surface: #292a2d;
-          --text-primary: #e8eaed;
-          --text-secondary: #9aa0a6;
-          --border: #3c4043;
-          --hover: #35363a;
-          --active: #202124;
-          --link: #8ab4f8;
-          --dropdown-bg: #2d2d2d;
-        }
-      }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--background);
+      color: var(--text-primary);
+      font-family:
+        'Google Sans',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Oxygen-Sans,
+        Ubuntu,
+        Cantarell,
+        sans-serif;
+      overflow-x: hidden;
+    }
 
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: var(--background);
-        color: var(--text-primary);
-        font-family:
-          'Google Sans',
-          -apple-system,
-          BlinkMacSystemFont,
-          'Segoe UI',
-          Roboto,
-          Oxygen-Sans,
-          Ubuntu,
-          Cantarell,
-          sans-serif;
-        overflow-x: hidden;
-      }
+    .container {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+    }
 
-      .container {
-        display: flex;
-        min-height: 100vh;
-        position: relative;
-      }
+    .sidebar {
+      width: 256px;
+      padding: 20px;
+      border-right: 1px solid var(--border);
+      position: fixed;
+      height: 100vh;
+      background: var(--background);
+      z-index: 10;
+      box-sizing: border-box;
+    }
 
+    .main-content {
+      flex: 1;
+      margin-left: 296px;
+      padding: 20px;
+      max-width: 900px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .search-container {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding-bottom: 24px;
+      padding-top: 20px;
+      /* Add padding top so when we scroll it covers the gap if margin was used */
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: var(--background);
+    }
+
+    .search-bar {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+    }
+
+    .search-bar input {
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 16px;
+      width: 100%;
+      margin-left: 8px;
+      outline: none;
+    }
+
+    .date-group {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .date-header {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      padding: 8px 16px;
+      margin: -16px -16px 16px -16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      margin: 0 -16px;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.2s;
+    }
+
+    .history-item:hover {
+      background: var(--hover);
+    }
+
+    .menu-button {
+      opacity: 0;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      transition:
+        opacity 0.2s,
+        background-color 0.2s;
+      margin-left: 8px;
+    }
+
+    .menu-button:hover {
+      background-color: var(--hover);
+    }
+
+    .history-item:hover .menu-button {
+      opacity: 1;
+      display: flex;
+    }
+
+    .dropdown-menu {
+      position: fixed;
+      background: var(--dropdown-bg);
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 100;
+      display: none;
+      min-width: 180px;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .dropdown-menu.show {
+      display: block;
+    }
+
+    .dropdown-item {
+      padding: 8px 16px;
+      font-size: 13px;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .dropdown-item:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .favicon {
+      width: 20px;
+      height: 20px;
+      margin-right: 16px;
+      flex-shrink: 0;
+    }
+
+    .item-details {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .title {
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .url {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .time {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      margin-left: 16px;
+      flex-shrink: 0;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: var(--hover);
+    }
+
+    .nav-item.active {
+      background: var(--active);
+      color: var(--link);
+    }
+
+    .nav-icon {
+      margin-right: 12px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .no-results {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    .search-bar svg {
+      cursor: pointer;
+    }
+
+    .external-link {
+      margin-left: auto;
+      opacity: 0.8;
+    }
+
+    .nav-item:hover .external-link {
+      opacity: 1;
+    }
+
+    .account-notice {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      padding: 16px 20px;
+      background: var(--background);
+      border-top: 1px solid var(--border);
+      width: 256px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      z-index: 10;
+      display: flex;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+
+    .account-notice svg {
+      width: 18px;
+      height: 18px;
+      margin-right: 16px;
+      flex-shrink: 0;
+      fill: currentColor;
+    }
+
+    .account-notice-text {
+      flex: 1;
+    }
+
+    .account-notice a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .account-notice a:hover {
+      text-decoration: underline;
+    }
+
+    #content {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 16px;
+      background-color: var(--surface);
+      color: var(--text-primary);
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      border: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
       .sidebar {
-        width: 256px;
-        padding: 20px;
-        border-right: 1px solid var(--border);
-        position: fixed;
-        height: 100vh;
-        background: var(--background);
-        z-index: 10;
-        box-sizing: border-box;
+        width: 200px;
       }
 
       .main-content {
-        flex: 1;
-        margin-left: 296px;
-        padding: 20px;
-        max-width: 900px;
-        width: 100%;
-        box-sizing: border-box;
+        margin-left: 240px;
       }
 
-      .search-container {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-        max-width: 800px;
-        margin: 0 auto 24px auto;
-      }
-
-      .search-bar {
-        width: 100%;
-        padding: 12px 16px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        display: flex;
-        align-items: center;
-        box-sizing: border-box;
-      }
-
-      .search-bar input {
-        border: none;
-        background: transparent;
-        color: var(--text-primary);
-        font-size: 16px;
-        width: 100%;
-        margin-left: 8px;
-        outline: none;
-      }
-
-      .date-group {
-        background: var(--surface);
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        border: 1px solid var(--border);
-        max-width: 800px;
-        margin-left: auto;
-        margin-right: auto;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .date-header {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-primary);
-        padding: 8px 16px;
-        margin: -16px -16px 16px -16px;
-        border-bottom: 1px solid var(--border);
-        background: var(--surface);
-        position: sticky;
-        top: 0;
-        z-index: 1;
-      }
-
-      .history-item {
-        display: flex;
-        align-items: center;
-        padding: 8px 16px;
-        margin: 0 -16px;
-        cursor: pointer;
-        position: relative;
-        transition: background-color 0.2s;
-      }
-
-      .history-item:hover {
-        background: var(--hover);
-      }
-
-      .menu-button {
-        opacity: 0;
-        cursor: pointer;
-        padding: 4px;
-        border-radius: 50%;
-        transition:
-          opacity 0.2s,
-          background-color 0.2s;
-        margin-left: 8px;
-      }
-
-      .menu-button:hover {
-        background-color: var(--hover);
-      }
-
-      .history-item:hover .menu-button {
-        opacity: 1;
-        display: flex;
-      }
-
-      .dropdown-menu {
-        position: fixed;
-        background: var(--dropdown-bg);
-        border-radius: 4px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        z-index: 100;
-        display: none;
-        min-width: 180px;
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-
-      .dropdown-menu.show {
-        display: block;
-      }
-
-      .dropdown-item {
-        padding: 8px 16px;
-        font-size: 13px;
-        color: #fff;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-
-      .dropdown-item:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-      }
-
-      .favicon {
-        width: 20px;
-        height: 20px;
-        margin-right: 16px;
-        flex-shrink: 0;
-      }
-
-      .item-details {
-        flex-grow: 1;
-        min-width: 0;
-      }
-
-      .title {
-        color: var(--text-primary);
-        margin-bottom: 4px;
-        font-size: 0.875rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .url {
-        color: var(--text-secondary);
-        font-size: 0.75rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .time {
-        color: var(--text-secondary);
-        font-size: 0.75rem;
-        margin-left: 16px;
-        flex-shrink: 0;
-      }
-
-      .loading {
-        text-align: center;
-        padding: 20px;
-        color: var(--text-secondary);
-      }
-
-      .nav-item {
-        display: flex;
-        align-items: center;
-        padding: 8px 12px;
-        border-radius: 20px;
-        margin-bottom: 8px;
-        cursor: pointer;
-        color: var(--text-primary);
-        text-decoration: none;
-      }
-
-      .nav-item:hover {
-        background: var(--hover);
-      }
-
-      .nav-item.active {
-        background: var(--active);
-        color: var(--link);
-      }
-
-      .nav-icon {
-        margin-right: 12px;
-        width: 20px;
-        height: 20px;
-      }
-      .no-results {
-        text-align: center;
-        padding: 40px 0;
-        color: var(--text-secondary);
-        font-size: 1rem;
-      }
-      .search-bar svg {
-        cursor: pointer;
-      }
-      .external-link {
-        margin-left: auto;
-        opacity: 0.8;
-      }
-      .nav-item:hover .external-link {
-        opacity: 1;
-      }
       .account-notice {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        padding: 16px 20px;
-        background: var(--background);
-        border-top: 1px solid var(--border);
-        width: 256px;
-        font-size: 12px;
-        color: var(--text-secondary);
-        line-height: 1.5;
-        z-index: 10;
-        display: flex;
-        align-items: flex-start;
-        box-sizing: border-box;
+        width: 200px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        flex-direction: column;
       }
 
-      .account-notice svg {
-        width: 18px;
-        height: 18px;
-        margin-right: 16px;
-        flex-shrink: 0;
-        fill: currentColor;
+      .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 10px;
       }
 
-      .account-notice-text {
-        flex: 1;
+      .main-content {
+        margin-left: 0;
+        padding: 10px;
       }
 
-      .account-notice a {
-        color: var(--link);
-        text-decoration: none;
+      .account-notice {
+        position: static;
+        width: 100%;
       }
+    }
 
-      .account-notice a:hover {
-        text-decoration: underline;
-      }
+    /* Bulk Selection Styles */
+    .checkbox-container {
+      padding: 0 8px 0 16px;
+      display: flex;
+      align-items: center;
+    }
 
-      #content {
-        max-width: 800px;
-        margin: 0 auto;
-      }
+    .checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--link);
+      /* Use theme color for checkbox */
+      opacity: 0.4;
+      /* Dim when unchecked */
+      transition: opacity 0.2s;
+    }
 
-      .notification {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 8px 16px;
-        background-color: var(--surface);
-        color: var(--text-primary);
-        border-radius: 4px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        z-index: 1000;
-        border: 1px solid var(--border);
-      }
+    .history-item:hover .checkbox,
+    .checkbox:checked {
+      opacity: 1;
+    }
 
-      @media (max-width: 768px) {
-        .sidebar {
-          width: 200px;
-        }
+    .history-item.selected {
+      background-color: var(--active);
+    }
 
-        .main-content {
-          margin-left: 240px;
-        }
+    .bulk-action-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background-color: var(--background);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      z-index: 101;
+      transform: translateY(-100%);
+      transition: transform 0.2s ease-in-out;
+    }
 
-        .account-notice {
-          width: 200px;
-        }
-      }
+    .bulk-action-bar.visible {
+      transform: translateY(0);
+    }
 
-      @media (max-width: 600px) {
-        .container {
-          flex-direction: column;
-        }
+    .bulk-actions-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-weight: 500;
+      font-size: 1.1rem;
+    }
 
-        .sidebar {
-          position: static;
-          width: 100%;
-          height: auto;
-          border-right: none;
-          border-bottom: 1px solid var(--border);
-          padding: 10px;
-        }
+    .bulk-actions-right {
+      display: flex;
+      gap: 12px;
+    }
 
-        .main-content {
-          margin-left: 0;
-          padding: 10px;
-        }
+    .btn {
+      padding: 8px 24px;
+      /* Wider buttons */
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      outline: none;
+    }
 
-        .account-notice {
-          position: static;
-          width: 100%;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="sidebar">
-        <div class="nav-item active">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M13.5 8H12v5l4.28 2.54.72-1.21-3.5-2.08V8M13 3a9 9 0 0 0-9 9H1l3.96 4.03L9 12H6a7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.896 8.896 0 0 0 13 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9"
-            ></path>
-          </svg>
-          Chrome history
-        </div>
-        <div class="nav-item" id="delete-data">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z"
-            />
-            <path d="M9 8h2v9H9zm4 0h2v9h-2z" />
-          </svg>
-          Delete browsing data
-          <svg
-            class="external-link"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            style="margin-left: auto"
-          >
-            <path
-              d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"
-            />
-          </svg>
-        </div>
-      </div>
-      <div class="main-content">
-        <div class="search-container">
-          <div class="search-bar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
-              ></path>
-            </svg>
-            <input type="text" placeholder="Search history" />
-          </div>
-        </div>
-        <div id="content"></div>
-        <div id="loading" class="loading" style="display: none">Loading more history...</div>
-      </div>
-      <div class="account-notice">
-        <svg viewBox="0 0 24 24">
+    .btn-primary {
+      background-color: #8ab4f8;
+      /* Specific blue from screenshot approximation or just var(--link) */
+      background-color: var(--link);
+      color: white;
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
           <path
-            d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"
-          ></path>
+            d="M13.5 8H12v5l4.28 2.54.72-1.21-3.5-2.08V8M13 3a9 9 0 0 0-9 9H1l3.96 4.03L9 12H6a7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.896 8.896 0 0 0 13 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9">
+          </path>
         </svg>
-        <div class="account-notice-text">
-          Your Google Account may have other forms of browsing history at
-          <a href="https://myactivity.google.com" target="_blank" rel="noopener noreferrer"
-            >myactivity.google.com</a
-          >
-        </div>
+        Chrome history
+      </div>
+      <div class="nav-item" id="delete-data">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M15 4V3H9v1H4v2h1v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h1V4h-5zm2 15H7V6h10v13z" />
+          <path d="M9 8h2v9H9zm4 0h2v9h-2z" />
+        </svg>
+        Delete browsing data
+        <svg class="external-link" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+          style="margin-left: auto">
+          <path
+            d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
+        </svg>
       </div>
     </div>
-    <script src="history.js"></script>
-  </body>
+    <div class="main-content">
+      <div class="search-container">
+        <div class="search-bar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z">
+            </path>
+          </svg>
+          <input type="text" placeholder="Search history" />
+        </div>
+      </div>
+      <div id="content"></div>
+      <div id="loading" class="loading" style="display: none">Loading more history...</div>
+    </div>
+
+
+    <div class="account-notice">
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z">
+        </path>
+      </svg>
+      <div class="account-notice-text">
+        Your Google Account may have other forms of browsing history at
+        <a href="https://myactivity.google.com" target="_blank" rel="noopener noreferrer">myactivity.google.com</a>
+      </div>
+    </div>
+  </div>
+  <script src="history.js"></script>
+</body>
+
 </html>
