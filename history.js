@@ -5,31 +5,7 @@ let searchQuery = ''
 let searchTimeout
 
 // Check if chrome is defined, if not, mock it for testing purposes
-if (typeof chrome === 'undefined') {
-  globalThis.chrome = {
-    history: {
-      search: (query, callback) => {
-        // Mock implementation for testing
-        console.warn('Mock chrome.history.search called.  Returning empty array.')
-        callback([])
-      },
-      deleteUrl: (details, callback) => {
-        // Mock implementation for testing
-        console.warn('Mock chrome.history.deleteUrl called.')
-        callback()
-      },
-    },
-    tabs: {
-      create: (options) => {
-        // Mock implementation for testing
-        console.warn('Mock chrome.tabs.create called with URL:', options.url)
-      },
-    },
-    runtime: {
-      lastError: null, // Initialize lastError to null
-    },
-  }
-}
+
 
 function formatDate(date) {
   // Create date objects with time set to midnight for proper day comparison
@@ -427,3 +403,5 @@ window.addEventListener('scroll', () => {
     loadMoreHistory()
   }
 })
+
+
