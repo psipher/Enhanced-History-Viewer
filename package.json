@@ -1,0 +1,29 @@
+{
+  "name": "enhanced-history-viewer",
+  "version": "1.1.0",
+  "description": "View your Chrome browsing history with full URLs",
+  "private": true,
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/psipher/Enhanced-History-Viewer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/psipher/Enhanced-History-Viewer/issues"
+  },
+  "homepage": "https://github.com/psipher/Enhanced-History-Viewer#readme",
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.0.0",
+    "prettier": "^3.7.4"
+  }
+}

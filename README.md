@@ -1,7 +1,7 @@
 # Enhanced History Viewer
 
 [Enhanced History Viewer](https://chromewebstore.google.com/detail/enhanced-history-viewer/pcojfenpnmoghjejjdkmbngpcmflmdfm?hl=en-US)
- is a Chrome extension that replaces the default history page with a more intuitive and feature-rich interface. It provides a clean, modern design for browsing your Chrome history with full URL display and improved search functionality.
+is a Chrome extension that replaces the default history page with a more intuitive and feature-rich interface. It provides a clean, modern design for browsing your Chrome history with full URL display and improved search functionality.
 
 ## Features
 
@@ -14,12 +14,14 @@
 ## Installation
 
 ### From Chrome Web Store (Recommended)
+
 1. Visit the [Enhanced History Viewer Chrome Web Store page](https://chromewebstore.google.com/detail/enhanced-history-viewer/pcojfenpnmoghjejjdkmbngpcmflmdfm?hl=en-US).
 2. Click **"Add to Chrome"**.
 3. Confirm by selecting **"Add Extension"**.
 4. The extension will be installed, and you can access it by directly visiting history page.
 
 ### Manual Installation (Developer Mode)
+
 If you prefer to install the extension manually:
 
 1. **Download the Extension:**
@@ -51,7 +53,6 @@ After installation, the extension will automatically replace Chrome's default hi
 1. Initial page to configure this extension more easily.
 2. Fix icons for custom sites.
 
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -70,4 +71,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you encounter any issues or have suggestions for improvements, please open an issue in this repository.
 
 Enjoy your enhanced browsing history experience!
-
