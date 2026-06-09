@@ -1,11 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Enhanced History Viewer",
-  "version": "1.3",
+  "version": "1.4",
   "description": "View your Chrome browsing history with full URLs",
   "permissions": [
     "history",
-    "favicon"
+    "favicon",
+    "sessions",
+    "tabs"
   ],
   "host_permissions": [
     "https://www.google.com/s2/*"
