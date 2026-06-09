@@ -10,6 +10,9 @@ is a Chrome extension that replaces the default history page with a more intuiti
 - **Fast Search**: Quickly find specific history items with responsive search functionality.
 - **Infinite Scrolling**: Easily browse through your entire history without pagination.
 - **Chrome Integration**: Seamlessly replaces Chrome's built-in history page.
+- **Bulk Operations**: Select multiple history items at once and delete them in parallel with a single click.
+- **Tabs from other devices**: View and open tabs currently active on your synced phones, tablets, and computers from a dedicated sidebar tab.
+- **Smart Device Icons**: Displays a clean, native-feeling indicator icon next to synced history items.
 
 ## Installation
 
