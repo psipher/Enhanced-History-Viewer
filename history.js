@@ -7,6 +7,8 @@ let selectedUrls = new Set() // Track selected URLs for bulk actions
 let searchTimeout
 let currentSearchRequestId = 0
 let hasMoreHistory = true
+let lastCheckedCheckbox = null
+
 
 function formatDate(date) {
   // Create date objects with time set to midnight for proper day comparison
@@ -118,6 +120,7 @@ function clearSelection() {
   document.querySelectorAll('.history-item-checkbox').forEach((cb) => {
     cb.checked = false
   })
+  lastCheckedCheckbox = null
   updateActionBar()
 }
 
@@ -158,6 +161,43 @@ function deleteSelectedItems() {
   })
 }
 
+function handleCheckboxClick(e, checkbox, url) {
+  if (e.shiftKey && lastCheckedCheckbox) {
+    const checkboxes = Array.from(document.querySelectorAll('.history-item-checkbox'))
+    const start = checkboxes.indexOf(lastCheckedCheckbox)
+    const end = checkboxes.indexOf(checkbox)
+
+    if (start !== -1 && end !== -1) {
+      const min = Math.min(start, end)
+      const max = Math.max(start, end)
+      const targetCheckedState = checkbox.checked
+
+      for (let i = min; i <= max; i++) {
+        const cb = checkboxes[i]
+        const parentRow = cb.closest('.history-item')
+        if (parentRow) {
+          const itemUrl = parentRow.getAttribute('data-url')
+          cb.checked = targetCheckedState
+          if (targetCheckedState) {
+            selectedUrls.add(itemUrl)
+          } else {
+            selectedUrls.delete(itemUrl)
+          }
+        }
+      }
+    }
+  } else {
+    if (checkbox.checked) {
+      selectedUrls.add(url)
+    } else {
+      selectedUrls.delete(url)
+    }
+  }
+
+  lastCheckedCheckbox = checkbox
+  updateActionBar()
+}
+
 function createHistoryItem(item) {
   const div = document.createElement('div')
   div.className = 'history-item'
@@ -170,14 +210,7 @@ function createHistoryItem(item) {
   checkbox.checked = selectedUrls.has(item.url)
   checkbox.addEventListener('click', (e) => {
     e.stopPropagation()
-  })
-  checkbox.addEventListener('change', (e) => {
-    if (e.target.checked) {
-      selectedUrls.add(item.url)
-    } else {
-      selectedUrls.delete(item.url)
-    }
-    updateActionBar()
+    handleCheckboxClick(e, checkbox, item.url)
   })
   div.appendChild(checkbox)
 
@@ -194,8 +227,10 @@ function createHistoryItem(item) {
     if (e.target.closest('.item-details') || e.target.closest('.time')) {
       window.open(item.url, '_blank')
     } else {
-      checkbox.checked = !checkbox.checked
-      checkbox.dispatchEvent(new Event('change'))
+      checkbox.dispatchEvent(new MouseEvent('click', {
+        shiftKey: e.shiftKey,
+        bubbles: true
+      }))
     }
   })
 
@@ -489,9 +524,10 @@ function performSearch() {
   // Increment request ID to invalidate any conflicting previous searches
   currentSearchRequestId++
 
-  // Reset loading and paging states so we can immediately start the new search
+  // Reset loading, paging, and selection states so we can immediately start the new search
   isLoading = false
   hasMoreHistory = true
+  lastCheckedCheckbox = null
 
   // Clear existing content
   const content = document.getElementById('content')
