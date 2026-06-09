@@ -6,6 +6,7 @@ let selectedUrls = new Set() // Track selected URLs for bulk actions
 
 let searchTimeout
 let currentSearchRequestId = 0
+let hasMoreHistory = true
 
 function formatDate(date) {
   // Create date objects with time set to midnight for proper day comparison
@@ -151,6 +152,7 @@ function deleteSelectedItems() {
     // If page is empty, load more
     const content = document.getElementById('content')
     if (content.children.length === 0) {
+      hasMoreHistory = true
       loadMoreHistory(currentSearchRequestId)
     }
   })
@@ -406,7 +408,7 @@ function renderHistoryGroup(date, items, container) {
 }
 
 function loadMoreHistory(requestId) {
-  if (isLoading) return
+  if (isLoading || !hasMoreHistory) return
 
   isLoading = true
   const loading = document.getElementById('loading')
@@ -430,6 +432,10 @@ function loadMoreHistory(requestId) {
         loading.style.display = 'none'
         isLoading = false
         return
+      }
+
+      if (!items || items.length < ITEMS_PER_PAGE) {
+        hasMoreHistory = false
       }
 
       const content = document.getElementById('content')
@@ -483,8 +489,9 @@ function performSearch() {
   // Increment request ID to invalidate any conflicting previous searches
   currentSearchRequestId++
 
-  // Reset isLoading state so we can immediately start the new search
+  // Reset loading and paging states so we can immediately start the new search
   isLoading = false
+  hasMoreHistory = true
 
   // Clear existing content
   const content = document.getElementById('content')
