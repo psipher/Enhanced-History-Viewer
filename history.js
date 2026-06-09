@@ -225,9 +225,9 @@ function createHistoryItem(item) {
         const syncedBadge = document.createElement('span')
         syncedBadge.className = 'synced-badge'
         syncedBadge.innerHTML = `
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px; vertical-align: middle;">
-            <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
-          </svg>Phone
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" style="vertical-align: middle;">
+            <path fill-rule="evenodd" d="M4 6h13v9H4V6zm15 2h3v10h-3V8zM2 4c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v2h3c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2v-1H4c-1.1 0-2-.9-2-2V4z"/>
+          </svg>
         `
         title.appendChild(syncedBadge)
       }
