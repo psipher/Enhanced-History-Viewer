@@ -238,8 +238,14 @@ function createHistoryItem(item) {
   favicon.className = 'favicon'
   favicon.src = getFaviconUrl(item.url)
   favicon.onerror = () => {
-    favicon.src =
-      'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'
+    const domain = getHostname(item.url)
+    const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
+    if (favicon.src !== fallbackUrl) {
+      favicon.src = fallbackUrl
+    } else {
+      favicon.src =
+        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'
+    }
   }
 
   const details = document.createElement('div')
@@ -626,8 +632,14 @@ function loadOtherDevices() {
           favicon.className = 'favicon'
           favicon.src = getFaviconUrl(tab.url)
           favicon.onerror = () => {
-            favicon.src =
-              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'
+            const domain = getHostname(tab.url)
+            const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
+            if (favicon.src !== fallbackUrl) {
+              favicon.src = fallbackUrl
+            } else {
+              favicon.src =
+                'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'
+            }
           }
 
           const details = document.createElement('div')
