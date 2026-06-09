@@ -216,6 +216,12 @@
       color: var(--text-primary);
       margin-bottom: 4px;
       font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .title-text {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -232,8 +238,10 @@
     .time {
       color: var(--text-secondary);
       font-size: 0.75rem;
-      margin-left: 16px;
+      width: 60px;
+      margin-right: 16px;
       flex-shrink: 0;
+      text-align: left;
     }
 
     .loading {
@@ -345,6 +353,187 @@
       border: 1px solid var(--border);
     }
 
+    .search-bar:focus-within {
+      border-color: var(--link);
+      box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+    }
+
+    .history-item-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--text-secondary);
+      border-radius: 2px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      margin-right: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+      transition: border-color 0.15s, background-color 0.15s;
+    }
+
+    .history-item-checkbox:hover {
+      border-color: var(--text-primary);
+    }
+
+    .history-item-checkbox:checked {
+      background-color: var(--link);
+      border-color: var(--link);
+    }
+
+    .history-item-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+      top: 1px;
+      left: 4px;
+    }
+
+    .synced-badge {
+      display: inline-flex;
+      align-items: center;
+      background-color: var(--hover);
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+      border: 1px solid var(--border);
+    }
+
+    .action-bar {
+      width: 100%;
+      padding: 8px 16px;
+      background: var(--active);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+      color: var(--link);
+      font-weight: 500;
+      font-size: 14px;
+      height: 46px;
+    }
+
+    .action-bar button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+    }
+
+    .action-bar button:hover {
+      background-color: rgba(26, 115, 232, 0.1);
+    }
+
+    #selected-count {
+      flex-grow: 1;
+      margin-left: 16px;
+      color: var(--text-primary);
+    }
+
+    #delete-selected {
+      background-color: transparent;
+      border: 1px solid var(--link);
+      color: var(--link);
+      padding: 6px 16px !important;
+      border-radius: 18px !important;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    #delete-selected:hover {
+      background-color: var(--link) !important;
+      color: #fff !important;
+    }
+
+    .device-card {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .device-card-header {
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .device-card-header svg {
+      margin-right: 12px;
+      color: var(--text-secondary);
+    }
+
+    .device-tab-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .device-tab-item:hover {
+      background-color: var(--hover);
+    }
+
+    .device-tab-details {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .device-tab-title {
+      font-size: 14px;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .device-tab-url {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .device-tab-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-left: 16px;
+      flex-shrink: 0;
+    }
+
     @media (max-width: 768px) {
       .sidebar {
         width: 200px;
@@ -389,13 +578,19 @@
 <body>
   <div class="container">
     <div class="sidebar">
-      <div class="nav-item active">
+      <div class="nav-item active" id="nav-history">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
           <path
             d="M13.5 8H12v5l4.28 2.54.72-1.21-3.5-2.08V8M13 3a9 9 0 0 0-9 9H1l3.96 4.03L9 12H6a7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.896 8.896 0 0 0 13 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9">
           </path>
         </svg>
         Chrome history
+      </div>
+      <div class="nav-item" id="nav-other-devices">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h24v-3h-2V6c0-1.1-.9-2-2-2zM2 17V6h18v11H2zm10 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+        </svg>
+        Tabs from other devices
       </div>
       <div class="nav-item" id="delete-data">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -412,16 +607,31 @@
     </div>
     <div class="main-content">
       <div class="search-container">
-        <div class="search-bar">
+        <div class="search-bar" id="search-bar-wrapper">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path
               d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z">
             </path>
           </svg>
           <input type="text" placeholder="Search history" />
+          <button id="clear-search" style="display: none; background: none; border: none; padding: 4px; cursor: pointer; color: var(--text-secondary); align-items: center; justify-content: center; margin-left: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="action-bar" id="selection-action-bar" style="display: none;">
+          <button id="cancel-selection" title="Cancel selection">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+            </svg>
+          </button>
+          <span id="selected-count">0 selected</span>
+          <button id="delete-selected">Delete</button>
         </div>
       </div>
       <div id="content"></div>
+      <div id="other-devices-view" style="display: none;"></div>
       <div id="loading" class="loading" style="display: none">Loading more history...</div>
     </div>
 

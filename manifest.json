@@ -5,7 +5,9 @@
   "description": "View your Chrome browsing history with full URLs",
   "permissions": [
     "history",
-    "favicon"
+    "favicon",
+    "sessions",
+    "tabs"
   ],
   "host_permissions": [
     "https://www.google.com/s2/*"
