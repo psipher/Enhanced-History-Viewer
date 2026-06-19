@@ -2,3 +2,7 @@ node_modules
 .DS_Store
 *.log
 .vscode/settings.json
+docs/code_health_report.json
+docs/CODE_HEALTH.md
+docs/CODEBASE_GRAPH.md
+docs/codebase_map.json

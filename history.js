@@ -9,7 +9,6 @@ let currentSearchRequestId = 0
 let hasMoreHistory = true
 let lastCheckedCheckbox = null
 
-
 function formatDate(date) {
   // Create date objects with time set to midnight for proper day comparison
   const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -217,9 +216,11 @@ function createHistoryItem(item) {
   // Add click handler to toggle selection or open URL
   div.addEventListener('click', (e) => {
     // Don't open the URL if clicking on the menu button, menu items, or checkbox
-    if (e.target.closest('.menu-button') ||
+    if (
+      e.target.closest('.menu-button') ||
       e.target.closest('.dropdown-menu') ||
-      e.target.closest('.history-item-checkbox')) {
+      e.target.closest('.history-item-checkbox')
+    ) {
       return
     }
 
@@ -227,10 +228,12 @@ function createHistoryItem(item) {
     if (e.target.closest('.item-details') || e.target.closest('.time')) {
       window.open(item.url, '_blank')
     } else {
-      checkbox.dispatchEvent(new MouseEvent('click', {
-        shiftKey: e.shiftKey,
-        bubbles: true
-      }))
+      checkbox.dispatchEvent(
+        new MouseEvent('click', {
+          shiftKey: e.shiftKey,
+          bubbles: true,
+        })
+      )
     }
   })
 
@@ -259,23 +262,16 @@ function createHistoryItem(item) {
   titleText.textContent = item.title || getHostname(item.url)
   title.appendChild(titleText)
 
-  chrome.history.getVisits({ url: item.url }, (visits) => {
-    if (visits && visits.length > 0) {
-      // Sort visits by time to get the most recent one (newest first)
-      visits.sort((a, b) => b.visitTime - a.visitTime)
-      const mostRecentVisit = visits[0]
-      if (mostRecentVisit.isLocal === false) {
-        const syncedBadge = document.createElement('span')
-        syncedBadge.className = 'synced-badge'
-        syncedBadge.innerHTML = `
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" style="vertical-align: middle;">
-            <path fill-rule="evenodd" d="M4 6h13v9H4V6zm15 2h3v10h-3V8zM2 4c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v2h3c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2v-1H4c-1.1 0-2-.9-2-2V4z"/>
-          </svg>
-        `
-        title.appendChild(syncedBadge)
-      }
-    }
-  })
+  if (item.isLocal === false) {
+    const syncedBadge = document.createElement('span')
+    syncedBadge.className = 'synced-badge'
+    syncedBadge.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" style="vertical-align: middle;">
+        <path fill-rule="evenodd" d="M4 6h13v9H4V6zm15 2h3v10h-3V8zM2 4c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v2h3c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2v-1H4c-1.1 0-2-.9-2-2V4z"/>
+      </svg>
+    `
+    title.appendChild(syncedBadge)
+  }
 
   const url = document.createElement('div')
   url.className = 'url'
@@ -485,37 +481,78 @@ function loadMoreHistory(requestId) {
         // Sort items by date (newest first)
         items.sort((a, b) => b.lastVisitTime - a.lastVisitTime)
 
-        const groups = groupHistoryByDate(items)
-
-        // Sort date groups - Today, Yesterday, then other dates in reverse chronological order
-        const sortedDates = Object.keys(groups).sort((a, b) => {
-          if (a === 'Today') return -1
-          if (b === 'Today') return 1
-          if (a === 'Yesterday') return -1
-          if (b === 'Yesterday') return 1
-
-          // For other dates, convert to date objects and compare
-          const dateA = new Date(a)
-          const dateB = new Date(b)
-          return dateB - dateA
+        // Resolve local status for all items in parallel before rendering
+        const localStatusPromises = items.map((item) => {
+          return new Promise((resolve) => {
+            chrome.history.getVisits({ url: item.url }, (visits) => {
+              let isLocal = true
+              if (visits && visits.length > 0) {
+                visits.sort((a, b) => b.visitTime - a.visitTime)
+                const mostRecentVisit = visits[0]
+                if (mostRecentVisit.isLocal === false) {
+                  isLocal = false
+                }
+              }
+              resolve({ item, isLocal })
+            })
+          })
         })
 
-        sortedDates.forEach((date) => {
-          renderHistoryGroup(date, groups[date], content)
-        })
+        Promise.all(localStatusPromises).then((resolvedItems) => {
+          if (requestId !== currentSearchRequestId) {
+            return
+          }
 
-        lastFetchedTime = items[items.length - 1].lastVisitTime - 1
-      } else if (content.children.length === 0) {
-        const noResults = document.createElement('div')
-        noResults.className = 'no-results'
-        noResults.textContent = searchQuery
-          ? `No search results for "${searchQuery}"`
-          : 'No history items found'
-        content.appendChild(noResults)
+          const localOnly = document.getElementById('local-only-checkbox').checked
+          const filteredItems = resolvedItems
+            .filter((r) => !localOnly || r.isLocal)
+            .map((r) => {
+              r.item.isLocal = r.isLocal
+              return r.item
+            })
+
+          if (filteredItems.length > 0) {
+            const groups = groupHistoryByDate(filteredItems)
+
+            // Sort date groups - Today, Yesterday, then other dates in reverse chronological order
+            const sortedDates = Object.keys(groups).sort((a, b) => {
+              if (a === 'Today') return -1
+              if (b === 'Today') return 1
+              if (a === 'Yesterday') return -1
+              if (b === 'Yesterday') return 1
+
+              // For other dates, convert to date objects and compare
+              const dateA = new Date(a)
+              const dateB = new Date(b)
+              return dateB - dateA
+            })
+
+            sortedDates.forEach((date) => {
+              renderHistoryGroup(date, groups[date], content)
+            })
+          }
+
+          lastFetchedTime = items[items.length - 1].lastVisitTime - 1
+          isLoading = false
+          loading.style.display = 'none'
+
+          // If we filtered out items and now have no scrollbar/not enough content, load more automatically
+          if (hasMoreHistory && document.body.offsetHeight <= window.innerHeight) {
+            loadMoreHistory(requestId)
+          }
+        })
+      } else {
+        if (content.children.length === 0) {
+          const noResults = document.createElement('div')
+          noResults.className = 'no-results'
+          noResults.textContent = searchQuery
+            ? `No search results for "${searchQuery}"`
+            : 'No history items found'
+          content.appendChild(noResults)
+        }
+        isLoading = false
+        loading.style.display = 'none'
       }
-
-      isLoading = false
-      loading.style.display = 'none'
     }
   )
 }
@@ -552,21 +589,24 @@ function loadOtherDevices() {
   otherDevicesDiv.innerHTML = '<div class="loading">Loading synced devices...</div>'
 
   if (!chrome.sessions || !chrome.sessions.getDevices) {
-    otherDevicesDiv.innerHTML = '<div class="no-results">Sync and Sessions API are not available.</div>'
+    otherDevicesDiv.innerHTML =
+      '<div class="no-results">Sync and Sessions API are not available.</div>'
     return
   }
 
   chrome.sessions.getDevices({ maxResults: 10 }, (devices) => {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError)
-      otherDevicesDiv.innerHTML = '<div class="no-results">Error loading synced devices. Make sure Chrome Sync is enabled.</div>'
+      otherDevicesDiv.innerHTML =
+        '<div class="no-results">Error loading synced devices. Make sure Chrome Sync is enabled.</div>'
       return
     }
 
     otherDevicesDiv.innerHTML = ''
 
     if (!devices || devices.length === 0) {
-      otherDevicesDiv.innerHTML = '<div class="no-results">No synced devices found. Make sure you are signed in and Sync is turned on.</div>'
+      otherDevicesDiv.innerHTML =
+        '<div class="no-results">No synced devices found. Make sure you are signed in and Sync is turned on.</div>'
       return
     }
 
@@ -584,7 +624,12 @@ function loadOtherDevices() {
           <path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h24v-3h-2V6c0-1.1-.9-2-2-2zM2 17V6h18v11H2zm10 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
         </svg>
       ` // Default laptop
-      if (nameLower.includes('phone') || nameLower.includes('mobile') || nameLower.includes('android') || nameLower.includes('iphone')) {
+      if (
+        nameLower.includes('phone') ||
+        nameLower.includes('mobile') ||
+        nameLower.includes('android') ||
+        nameLower.includes('iphone')
+      ) {
         iconSvg = `
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
@@ -724,6 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
     contentDiv.style.display = 'block'
     otherDevicesDiv.style.display = 'none'
     searchContainer.style.display = 'flex'
+    checkDeviceFilterVisibility()
     // Refresh history
     performSearch()
   })
@@ -734,8 +780,19 @@ document.addEventListener('DOMContentLoaded', () => {
     contentDiv.style.display = 'none'
     otherDevicesDiv.style.display = 'block'
     searchContainer.style.display = 'none'
+    document.getElementById('filter-device-container').style.display = 'none'
     clearSelection()
     loadOtherDevices()
+  })
+
+  // Add click listener for Local Only Checkbox
+  const localOnlyCheckbox = document.getElementById('local-only-checkbox')
+  const isLocalOnly = localStorage.getItem('localOnlyHistory') === 'true'
+  localOnlyCheckbox.checked = isLocalOnly
+
+  localOnlyCheckbox.addEventListener('change', () => {
+    localStorage.setItem('localOnlyHistory', localOnlyCheckbox.checked)
+    performSearch()
   })
 
   // Action Bar event listeners
@@ -754,13 +811,38 @@ document.addEventListener('DOMContentLoaded', () => {
       closeAllDropdowns()
     }
   })
+
+  // Initial check for device filter visibility
+  checkDeviceFilterVisibility()
 })
+
+function checkDeviceFilterVisibility() {
+  const filterDeviceContainer = document.getElementById('filter-device-container')
+  const navHistory = document.getElementById('nav-history')
+
+  if (!navHistory || !navHistory.classList.contains('active')) {
+    if (filterDeviceContainer) filterDeviceContainer.style.display = 'none'
+    return
+  }
+
+  if (chrome.sessions && chrome.sessions.getDevices) {
+    chrome.sessions.getDevices({ maxResults: 1 }, (devices) => {
+      const hasDevices = !chrome.runtime.lastError && devices && devices.length > 0
+      if (filterDeviceContainer) {
+        filterDeviceContainer.style.display = hasDevices ? 'flex' : 'none'
+      }
+    })
+  } else {
+    if (filterDeviceContainer) filterDeviceContainer.style.display = 'none'
+  }
+}
 
 window.addEventListener('scroll', () => {
   const content = document.getElementById('content')
-  if (content.style.display !== 'none' && window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000) {
+  if (
+    content.style.display !== 'none' &&
+    window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000
+  ) {
     loadMoreHistory(currentSearchRequestId)
   }
 })
-
-

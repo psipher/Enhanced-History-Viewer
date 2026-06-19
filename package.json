@@ -1,13 +1,15 @@
 {
   "name": "enhanced-history-viewer",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "View your Chrome browsing history with full URLs",
   "private": true,
   "main": "background.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "oxlint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "map-codebase": "tsx scripts/map-codebase.ts",
+    "check-code-health": "tsx scripts/check-code-health.ts"
   },
   "repository": {
     "type": "git",
@@ -21,7 +23,10 @@
   },
   "homepage": "https://github.com/psipher/Enhanced-History-Viewer#readme",
   "devDependencies": {
+    "@types/node": "^26.0.0",
     "oxlint": "^1.69.0",
-    "prettier": "^3.7.4"
+    "prettier": "^3.7.4",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
   }
 }

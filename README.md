@@ -45,16 +45,7 @@ If you prefer to install the extension manually:
 
 ## Usage
 
-After installation, the extension will automatically replace Chrome's default history page. You can access it by:
-
-- Clicking on the extension icon in the Chrome toolbar.
-- Using the keyboard shortcut (Ctrl+H on Windows/Linux, Cmd+Y on Mac).
-- Typing `chrome://history` in the address bar.
-
-## In Development
-
-1. Initial page to configure this extension more easily.
-2. Fix icons for custom sites.
+After installation, the extension will automatically replace Chrome's default history page. To activate the extension after installing, please close any existing History tabs or restart chrome. Then, simply press Ctrl+H (or Cmd+Y on Mac) to use the new viewer.
 
 ## Contributing
 
@@ -72,5 +63,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 If you encounter any issues or have suggestions for improvements, please open an issue in this repository.
-
-Enjoy your enhanced browsing history experience!
