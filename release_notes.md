@@ -1,6 +1,27 @@
-# Release Notes - Version 1.5
+# Release Notes - Version 1.6
 
-We are excited to release **Version 1.5** of the Enhanced History Viewer. This update introduces local-only history filtering, parallel pre-rendering optimizations, and new automated codebase mapping & code health checking scripts.
+We are excited to release **Version 1.6** of the Enhanced History Viewer. This update introduces scalable non-blocking history rendering, repeatable real-Chrome performance benchmarks, append-only benchmark results, and an updated development toolchain.
+
+---
+
+## What's New in v1.6
+
+### 1. History Rendering Performance
+
+- **Non-Blocking Status Enrichment**: History rows render before synced/local status lookups when the local-only filter is disabled. Lookups use bounded concurrency, short-lived caching, and history-event invalidation, while local-only filtering remains accurate.
+- **Scalable List Rendering**: Uses in-memory deduplication, batched document fragments, delegated row actions, stable date-group maps, observer-based infinite scrolling, offscreen content containment, and lazy favicon loading.
+- **Measured Improvement**: Repeatable five-run Chrome/Puppeteer benchmarks showed faster initial and full-list rendering at every tested size.
+- **50 Items**: Initial rendering 171→88 ms (-49%); full-list loading 224→123 ms (-45%).
+- **250 Items**: Initial rendering 129→90 ms (-30%); full-list loading 805→656 ms (-18%).
+- **1,000 Items**: Initial rendering 268→224 ms (-17%); full-list loading 6.32→5.04 s (-20%). Event listeners fell from 4,012 to 1,013 (-75%).
+- **Deferred Visit Lookups**: `getVisits` is not called before the first row is rendered; lookup concurrency is capped at 6.
+
+### 2. Development Tooling & Performance Tests
+
+- **Updated Toolchain**: Upgraded TypeScript to 7, plus Node.js types, Oxlint, Prettier, and TSX, and added Puppeteer 25.9 for real-browser validation.
+- **Repeatable Chrome Benchmark (`npm run benchmark:performance`)**: Runs initial render, infinite-scroll, search, and local-only workloads against locally seeded history in isolated temporary Chrome profiles at 50, 250, and 1,000 items.
+- **Correctness Invariants (`npm run test:performance`)**: Separately verifies behavior and structural performance guarantees without flaky wall-clock thresholds.
+- **Append-Only Results**: Benchmark outputs use unique timestamped run IDs and exclusive file creation, preserving prior results. Local environment artifacts remain excluded from version control.
 
 ---
 
