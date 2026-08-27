@@ -3,10 +3,6 @@
   <head>
     <title>History</title>
     <link rel="icon" type="image/png" href="favicon.png?v=4" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap"
-    />
     <style>
       :root {
         --background: #fff;
@@ -40,14 +36,7 @@
         background-color: var(--background);
         color: var(--text-primary);
         font-family:
-          'Google Sans',
-          -apple-system,
-          BlinkMacSystemFont,
-          'Segoe UI',
-          Roboto,
-          Oxygen-Sans,
-          Ubuntu,
-          Cantarell,
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell,
           sans-serif;
         overflow-x: hidden;
       }
@@ -126,6 +115,8 @@
         margin-right: auto;
         position: relative;
         overflow: hidden;
+        content-visibility: auto;
+        contain-intrinsic-size: auto 300px;
       }
 
       .date-header {
@@ -384,6 +375,12 @@
       }
 
       #content {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      #history-sentinel {
+        height: 1px;
         max-width: 800px;
         margin: 0 auto;
       }
@@ -718,6 +715,7 @@
           </div>
         </div>
         <div id="content"></div>
+        <div id="history-sentinel" aria-hidden="true"></div>
         <div id="other-devices-view" style="display: none"></div>
         <div id="loading" class="loading" style="display: none">Loading more history...</div>
       </div>

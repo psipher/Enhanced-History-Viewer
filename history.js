@@ -8,6 +8,18 @@ let searchTimeout
 let currentSearchRequestId = 0
 let hasMoreHistory = true
 let lastCheckedCheckbox = null
+const renderedUrls = new Set()
+const renderedItems = new Map()
+const dateGroups = new Map()
+const visitStatusCache = new Map()
+const visitStatusVersions = new Map()
+const visitLookupQueue = []
+const VISIT_STATUS_TTL_MS = 60 * 1000
+const MAX_CONCURRENT_VISIT_LOOKUPS = 6
+const DEVICE_CACHE_TTL_MS = 30 * 1000
+let activeVisitLookups = 0
+let historyObserver = null
+let deviceCache = null
 
 function formatDate(date) {
   // Create date objects with time set to midnight for proper day comparison
@@ -62,6 +74,119 @@ function getFaviconUrl(url) {
   }
 }
 
+function getDateKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getCachedVisitStatus(url) {
+  const cached = visitStatusCache.get(url)
+  if (cached?.promise) return undefined
+  if (!cached || cached.expiresAt <= Date.now()) {
+    if (cached && !cached.promise) visitStatusCache.delete(url)
+    return undefined
+  }
+  return cached.isLocal
+}
+
+function processVisitLookupQueue() {
+  while (activeVisitLookups < MAX_CONCURRENT_VISIT_LOOKUPS && visitLookupQueue.length > 0) {
+    const lookup = visitLookupQueue.shift()
+    activeVisitLookups++
+
+    chrome.history.getVisits({ url: lookup.url }, (visits) => {
+      let isLocal = true
+      let mostRecentVisit = null
+
+      if (!chrome.runtime.lastError && visits) {
+        for (const visit of visits) {
+          if (!mostRecentVisit || visit.visitTime > mostRecentVisit.visitTime) {
+            mostRecentVisit = visit
+          }
+        }
+        isLocal = mostRecentVisit?.isLocal !== false
+      }
+
+      activeVisitLookups--
+
+      if ((visitStatusVersions.get(lookup.url) || 0) !== lookup.version) {
+        getVisitStatus(lookup.url).then(lookup.resolve)
+        processVisitLookupQueue()
+        return
+      }
+
+      visitStatusCache.set(lookup.url, {
+        isLocal,
+        expiresAt: Date.now() + VISIT_STATUS_TTL_MS,
+        promise: null,
+      })
+      lookup.resolve(isLocal)
+      processVisitLookupQueue()
+    })
+  }
+}
+
+function getVisitStatus(url, prioritize = false) {
+  const cachedStatus = getCachedVisitStatus(url)
+  if (cachedStatus !== undefined) return Promise.resolve(cachedStatus)
+
+  const cached = visitStatusCache.get(url)
+  if (cached?.promise) {
+    if (prioritize) {
+      const queuedIndex = visitLookupQueue.findIndex((lookup) => lookup.url === url)
+      if (queuedIndex > 0) {
+        visitLookupQueue.unshift(visitLookupQueue.splice(queuedIndex, 1)[0])
+      }
+    }
+    return cached.promise
+  }
+
+  let resolveLookup
+  const promise = new Promise((resolve) => {
+    resolveLookup = resolve
+  })
+  visitStatusCache.set(url, {
+    isLocal: true,
+    expiresAt: Date.now() + VISIT_STATUS_TTL_MS,
+    promise,
+  })
+  const lookup = {
+    url,
+    resolve: resolveLookup,
+    version: visitStatusVersions.get(url) || 0,
+  }
+  if (prioritize) visitLookupQueue.unshift(lookup)
+  else visitLookupQueue.push(lookup)
+  processVisitLookupQueue()
+  return promise
+}
+
+function invalidateVisitStatus(url) {
+  visitStatusVersions.set(url, (visitStatusVersions.get(url) || 0) + 1)
+  visitStatusCache.delete(url)
+}
+
+function scheduleVisitStatusEnrichment(items, requestId) {
+  const enrich = () => {
+    if (requestId !== currentSearchRequestId) return
+    items.forEach((item) => {
+      getVisitStatus(item.url).then((isLocal) => {
+        if (requestId !== currentSearchRequestId) return
+        const row = renderedItems.get(item.url)
+        if (row?.isConnected) updateSyncedBadge(row, isLocal)
+      })
+    })
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(enrich, { timeout: 500 })
+  } else {
+    setTimeout(enrich, 0)
+  }
+}
+
 function showNotification(message) {
   // Remove any existing notifications
   const existingNotifications = document.querySelectorAll('.notification')
@@ -93,6 +218,7 @@ function createGlobalDropdownMenu() {
 
   const dropdownMenu = document.createElement('div')
   dropdownMenu.className = 'dropdown-menu'
+  dropdownMenu.addEventListener('click', handleDropdownAction)
   document.body.appendChild(dropdownMenu)
 
   globalDropdownMenu = dropdownMenu
@@ -123,6 +249,95 @@ function clearSelection() {
   updateActionBar()
 }
 
+function removeRenderedItem(url) {
+  const row = renderedItems.get(url)
+  if (!row) return
+
+  const group = row.closest('.date-group')
+  row.remove()
+  renderedItems.delete(url)
+  renderedUrls.delete(url)
+  selectedUrls.delete(url)
+  invalidateVisitStatus(url)
+
+  if (lastCheckedCheckbox && !lastCheckedCheckbox.isConnected) {
+    lastCheckedCheckbox = null
+  }
+
+  if (group && !group.querySelector('.history-item')) {
+    dateGroups.delete(group.dataset.dateKey)
+    group.remove()
+  }
+}
+
+function handleDropdownAction(event) {
+  const actionElement = event.target.closest('.dropdown-item')
+  if (!actionElement || !globalDropdownMenu?.contains(actionElement)) return
+
+  event.stopPropagation()
+  const url = globalDropdownMenu.dataset.url
+  const item = renderedItems.get(url)?.historyItem
+  if (!url || !item) {
+    closeAllDropdowns()
+    return
+  }
+
+  switch (actionElement.dataset.action) {
+    case 'more-from-site': {
+      const searchInput = document.querySelector('.search-bar input')
+      searchInput.value = getHostname(url)
+      performSearch()
+      break
+    }
+    case 'remove':
+      chrome.history.deleteUrl({ url }, () => {
+        removeRenderedItem(url)
+        showNotification('Removed from history')
+      })
+      break
+    case 'copy':
+      navigator.clipboard
+        .writeText(url)
+        .then(() => showNotification('URL copied to clipboard'))
+        .catch((error) => {
+          console.error('Could not copy URL: ', error)
+          showNotification('Failed to copy URL')
+        })
+      break
+  }
+
+  closeAllDropdowns()
+}
+
+function openHistoryItemMenu(menuButton, item) {
+  const dropdownMenu = createGlobalDropdownMenu()
+  dropdownMenu.dataset.url = item.url
+  dropdownMenu.innerHTML = `
+    <div class="dropdown-item" data-action="more-from-site">More from this site</div>
+    <div class="dropdown-item" data-action="remove">Remove from history</div>
+    <div class="dropdown-item" data-action="copy">Copy URL</div>
+  `
+
+  closeAllDropdowns()
+  dropdownMenu.classList.add('show')
+
+  const menuRect = menuButton.getBoundingClientRect()
+  const dropdownRect = dropdownMenu.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const preferredLeft = menuRect.right - dropdownRect.width
+
+  dropdownMenu.style.top = `${menuRect.bottom + 4}px`
+  dropdownMenu.style.left = `${Math.max(
+    10,
+    Math.min(preferredLeft, viewportWidth - dropdownRect.width - 10)
+  )}px`
+
+  if (menuRect.bottom + dropdownRect.height > viewportHeight) {
+    dropdownMenu.style.top = `${menuRect.top - dropdownRect.height - 4}px`
+  }
+}
+
 function deleteSelectedItems() {
   if (selectedUrls.size === 0) return
 
@@ -134,19 +349,7 @@ function deleteSelectedItems() {
   })
 
   Promise.all(deletePromises).then(() => {
-    // Remove items from DOM
-    urlsToDelete.forEach((url) => {
-      document.querySelectorAll(`.history-item[data-url="${url}"]`).forEach((el) => {
-        el.remove()
-      })
-    })
-
-    // Clean up empty date groups
-    document.querySelectorAll('.date-group').forEach((group) => {
-      if (group.querySelectorAll('.history-item').length === 0) {
-        group.remove()
-      }
-    })
+    urlsToDelete.forEach(removeRenderedItem)
 
     showNotification(`Deleted ${urlsToDelete.length} item(s)`)
     clearSelection()
@@ -197,48 +400,43 @@ function handleCheckboxClick(e, checkbox, url) {
   updateActionBar()
 }
 
+function updateSyncedBadge(row, isLocal) {
+  const title = row.querySelector('.title')
+  const existingBadge = title?.querySelector('.synced-badge')
+
+  if (isLocal || !title) {
+    existingBadge?.remove()
+    return
+  }
+  if (existingBadge) return
+
+  const syncedBadge = document.createElement('span')
+  syncedBadge.className = 'synced-badge'
+  syncedBadge.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" style="vertical-align: middle;">
+      <path fill-rule="evenodd" d="M4 6h13v9H4V6zm15 2h3v10h-3V8zM2 4c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v2h3c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2v-1H4c-1.1 0-2-.9-2-2V4z"/>
+    </svg>
+  `
+  title.appendChild(syncedBadge)
+}
+
 function createHistoryItem(item) {
   const div = document.createElement('div')
   div.className = 'history-item'
   div.setAttribute('data-url', item.url)
+  div.historyItem = item
 
   // Prepend Checkbox
   const checkbox = document.createElement('input')
   checkbox.type = 'checkbox'
   checkbox.className = 'history-item-checkbox'
   checkbox.checked = selectedUrls.has(item.url)
-  checkbox.addEventListener('click', (e) => {
-    e.stopPropagation()
-    handleCheckboxClick(e, checkbox, item.url)
-  })
   div.appendChild(checkbox)
-
-  // Add click handler to toggle selection or open URL
-  div.addEventListener('click', (e) => {
-    // Don't open the URL if clicking on the menu button, menu items, or checkbox
-    if (
-      e.target.closest('.menu-button') ||
-      e.target.closest('.dropdown-menu') ||
-      e.target.closest('.history-item-checkbox')
-    ) {
-      return
-    }
-
-    // If clicking details or time, open the link; otherwise toggle the checkbox
-    if (e.target.closest('.item-details') || e.target.closest('.time')) {
-      window.open(item.url, '_blank')
-    } else {
-      checkbox.dispatchEvent(
-        new MouseEvent('click', {
-          shiftKey: e.shiftKey,
-          bubbles: true,
-        })
-      )
-    }
-  })
 
   const favicon = document.createElement('img')
   favicon.className = 'favicon'
+  favicon.loading = 'lazy'
+  favicon.decoding = 'async'
   favicon.src = getFaviconUrl(item.url)
   favicon.onerror = () => {
     const domain = getHostname(item.url)
@@ -262,17 +460,6 @@ function createHistoryItem(item) {
   titleText.textContent = item.title || getHostname(item.url)
   title.appendChild(titleText)
 
-  if (item.isLocal === false) {
-    const syncedBadge = document.createElement('span')
-    syncedBadge.className = 'synced-badge'
-    syncedBadge.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" style="vertical-align: middle;">
-        <path fill-rule="evenodd" d="M4 6h13v9H4V6zm15 2h3v10h-3V8zM2 4c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v2h3c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2v-1H4c-1.1 0-2-.9-2-2V4z"/>
-      </svg>
-    `
-    title.appendChild(syncedBadge)
-  }
-
   const url = document.createElement('div')
   url.className = 'url'
   url.textContent = item.url
@@ -289,159 +476,117 @@ function createHistoryItem(item) {
     </svg>
   `
 
-  // Toggle dropdown on menu button click
-  menuButton.addEventListener('click', (e) => {
-    e.stopPropagation()
-
-    // Get or create the global dropdown menu
-    const dropdownMenu = createGlobalDropdownMenu()
-
-    // Clear previous content
-    dropdownMenu.innerHTML = ''
-
-    // Add menu items
-    const moreFromSite = document.createElement('div')
-    moreFromSite.className = 'dropdown-item'
-    moreFromSite.textContent = 'More from this site'
-    moreFromSite.addEventListener('click', (e) => {
-      e.stopPropagation()
-      const hostname = getHostname(item.url)
-      const searchInput = document.querySelector('.search-bar input')
-      searchInput.value = hostname
-      performSearch()
-      closeAllDropdowns()
-    })
-
-    const removeFromHistory = document.createElement('div')
-    removeFromHistory.className = 'dropdown-item'
-    removeFromHistory.textContent = 'Remove from history'
-    removeFromHistory.addEventListener('click', (e) => {
-      e.stopPropagation()
-      chrome.history.deleteUrl({ url: item.url }, () => {
-        // Find all history items with this URL and remove them
-        document.querySelectorAll(`.history-item[data-url="${item.url}"]`).forEach((el) => {
-          el.remove()
-        })
-
-        // Show notification
-        showNotification('Removed from history')
-
-        // Check if the date group is now empty and remove it if so
-        document.querySelectorAll('.date-group').forEach((group) => {
-          if (group.querySelectorAll('.history-item').length === 0) {
-            group.remove()
-          }
-        })
-      })
-      closeAllDropdowns()
-    })
-
-    const copyUrl = document.createElement('div')
-    copyUrl.className = 'dropdown-item'
-    copyUrl.textContent = 'Copy URL'
-    copyUrl.addEventListener('click', (e) => {
-      e.stopPropagation()
-      navigator.clipboard
-        .writeText(item.url)
-        .then(() => {
-          showNotification('URL copied to clipboard')
-        })
-        .catch((err) => {
-          console.error('Could not copy URL: ', err)
-          showNotification('Failed to copy URL')
-        })
-      closeAllDropdowns()
-    })
-
-    dropdownMenu.appendChild(moreFromSite)
-    dropdownMenu.appendChild(removeFromHistory)
-    dropdownMenu.appendChild(copyUrl)
-
-    // Close any open dropdowns
-    closeAllDropdowns()
-
-    // Show the dropdown
-    dropdownMenu.classList.add('show')
-
-    // Position the dropdown below the clicked menu button, aligned to its right
-    const menuRect = menuButton.getBoundingClientRect()
-    const dropdownRect = dropdownMenu.getBoundingClientRect()
-
-    dropdownMenu.style.top = `${menuRect.bottom + 4}px`
-    dropdownMenu.style.left = `${menuRect.right - dropdownRect.width}px`
-
-    // Make sure the dropdown doesn't go off-screen
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-
-    const currentLeft = parseFloat(dropdownMenu.style.left)
-
-    if (currentLeft < 0) {
-      dropdownMenu.style.left = '10px'
-    } else if (currentLeft + dropdownRect.width > viewportWidth) {
-      dropdownMenu.style.left = `${viewportWidth - dropdownRect.width - 10}px`
-    }
-
-    if (menuRect.bottom + dropdownRect.height > viewportHeight) {
-      dropdownMenu.style.top = `${menuRect.top - dropdownRect.height - 4}px`
-    }
-  })
-
   details.appendChild(title)
   details.appendChild(url)
   div.appendChild(time)
   div.appendChild(favicon)
   div.appendChild(details)
   div.appendChild(menuButton)
+  updateSyncedBadge(div, item.isLocal !== false)
 
   return div
 }
 
+function handleContentClick(event) {
+  const row = event.target.closest('.history-item')
+  if (!row) return
+
+  const item = row.historyItem
+  const checkbox = row.querySelector('.history-item-checkbox')
+  if (!item || !checkbox) return
+
+  if (event.target.closest('.menu-button')) {
+    event.stopPropagation()
+    openHistoryItemMenu(event.target.closest('.menu-button'), item)
+    return
+  }
+
+  if (event.target.closest('.history-item-checkbox')) {
+    event.stopPropagation()
+    handleCheckboxClick(event, checkbox, item.url)
+    return
+  }
+
+  if (event.target.closest('.item-details') || event.target.closest('.time')) {
+    window.open(item.url, '_blank')
+    return
+  }
+
+  checkbox.checked = !checkbox.checked
+  handleCheckboxClick(event, checkbox, item.url)
+}
+
 function groupHistoryByDate(items) {
-  const groups = {}
+  const groups = new Map()
 
   items.forEach((item) => {
     const date = new Date(item.lastVisitTime)
-    const dateString = formatDate(date)
+    const dateKey = getDateKey(date)
 
-    if (!groups[dateString]) {
-      groups[dateString] = []
+    if (!groups.has(dateKey)) {
+      groups.set(dateKey, {
+        label: formatDate(date),
+        items: [],
+      })
     }
-    groups[dateString].push(item)
+    groups.get(dateKey).items.push(item)
   })
 
   return groups
 }
 
-function renderHistoryGroup(date, items, container) {
-  // Check if a group with this date already exists
-  const existingGroup = Array.from(container.children).find(
-    (el) => el.querySelector('.date-header')?.textContent === date
-  )
+function renderHistoryItems(items, container) {
+  const groups = groupHistoryByDate(items)
+  const newGroups = document.createDocumentFragment()
 
-  let targetGroup
-  if (existingGroup) {
-    targetGroup = existingGroup
-  } else {
-    // Create new group
-    targetGroup = document.createElement('div')
-    targetGroup.className = 'date-group'
+  groups.forEach((group, dateKey) => {
+    let targetGroup = dateGroups.get(dateKey)
+    const isNewGroup = !targetGroup
 
-    const header = document.createElement('div')
-    header.className = 'date-header'
-    header.textContent = date
+    if (!targetGroup) {
+      targetGroup = document.createElement('div')
+      targetGroup.className = 'date-group'
+      targetGroup.dataset.dateKey = dateKey
 
-    targetGroup.appendChild(header)
-    container.appendChild(targetGroup)
-  }
-
-  items.forEach((item) => {
-    // Deduplication check: Do not append if this URL already exists in the view
-    if (document.querySelector(`.history-item[data-url="${item.url}"]`)) {
-      return
+      const header = document.createElement('div')
+      header.className = 'date-header'
+      header.textContent = group.label
+      targetGroup.appendChild(header)
+      dateGroups.set(dateKey, targetGroup)
     }
-    targetGroup.appendChild(createHistoryItem(item))
+
+    const rows = document.createDocumentFragment()
+    group.items.forEach((item) => {
+      if (renderedUrls.has(item.url)) return
+
+      const cachedStatus = getCachedVisitStatus(item.url)
+      if (cachedStatus !== undefined) item.isLocal = cachedStatus
+
+      const row = createHistoryItem(item)
+      renderedUrls.add(item.url)
+      renderedItems.set(item.url, row)
+      rows.appendChild(row)
+    })
+    targetGroup.appendChild(rows)
+
+    if (isNewGroup) newGroups.appendChild(targetGroup)
   })
+
+  container.appendChild(newGroups)
+}
+
+function rearmHistoryObserver() {
+  if (!historyObserver || !hasMoreHistory) return
+  const sentinel = document.getElementById('history-sentinel')
+  historyObserver.unobserve(sentinel)
+  requestAnimationFrame(() => historyObserver.observe(sentinel))
+}
+
+function finishHistoryLoad(items, requestId) {
+  lastFetchedTime = items[items.length - 1].lastVisitTime - 1
+  isLoading = false
+  document.getElementById('loading').style.display = 'none'
+  if (requestId === currentSearchRequestId) rearmHistoryObserver()
 }
 
 function loadMoreHistory(requestId) {
@@ -478,69 +623,41 @@ function loadMoreHistory(requestId) {
       const content = document.getElementById('content')
 
       if (items && items.length > 0) {
-        // Sort items by date (newest first)
         items.sort((a, b) => b.lastVisitTime - a.lastVisitTime)
+        const localOnly = document.getElementById('local-only-checkbox').checked
 
-        // Resolve local status for all items in parallel before rendering
-        const localStatusPromises = items.map((item) => {
-          return new Promise((resolve) => {
-            chrome.history.getVisits({ url: item.url }, (visits) => {
-              let isLocal = true
-              if (visits && visits.length > 0) {
-                visits.sort((a, b) => b.visitTime - a.visitTime)
-                const mostRecentVisit = visits[0]
-                if (mostRecentVisit.isLocal === false) {
-                  isLocal = false
-                }
-              }
-              resolve({ item, isLocal })
-            })
+        if (localOnly) {
+          Promise.all(
+            items.map((item) =>
+              getVisitStatus(item.url, true).then((isLocal) => ({
+                item,
+                isLocal,
+              }))
+            )
+          ).then((resolvedItems) => {
+            if (requestId !== currentSearchRequestId) return
+
+            const filteredItems = resolvedItems
+              .filter(({ isLocal }) => isLocal)
+              .map(({ item, isLocal }) => {
+                item.isLocal = isLocal
+                return item
+              })
+
+            if (filteredItems.length > 0) {
+              renderHistoryItems(filteredItems, content)
+            }
+            finishHistoryLoad(items, requestId)
           })
-        })
-
-        Promise.all(localStatusPromises).then((resolvedItems) => {
+        } else {
           if (requestId !== currentSearchRequestId) {
             return
           }
 
-          const localOnly = document.getElementById('local-only-checkbox').checked
-          const filteredItems = resolvedItems
-            .filter((r) => !localOnly || r.isLocal)
-            .map((r) => {
-              r.item.isLocal = r.isLocal
-              return r.item
-            })
-
-          if (filteredItems.length > 0) {
-            const groups = groupHistoryByDate(filteredItems)
-
-            // Sort date groups - Today, Yesterday, then other dates in reverse chronological order
-            const sortedDates = Object.keys(groups).sort((a, b) => {
-              if (a === 'Today') return -1
-              if (b === 'Today') return 1
-              if (a === 'Yesterday') return -1
-              if (b === 'Yesterday') return 1
-
-              // For other dates, convert to date objects and compare
-              const dateA = new Date(a)
-              const dateB = new Date(b)
-              return dateB - dateA
-            })
-
-            sortedDates.forEach((date) => {
-              renderHistoryGroup(date, groups[date], content)
-            })
-          }
-
-          lastFetchedTime = items[items.length - 1].lastVisitTime - 1
-          isLoading = false
-          loading.style.display = 'none'
-
-          // If we filtered out items and now have no scrollbar/not enough content, load more automatically
-          if (hasMoreHistory && document.body.offsetHeight <= window.innerHeight) {
-            loadMoreHistory(requestId)
-          }
-        })
+          renderHistoryItems(items, content)
+          finishHistoryLoad(items, requestId)
+          scheduleVisitStatusEnrichment(items, requestId)
+        }
       } else {
         if (content.children.length === 0) {
           const noResults = document.createElement('div')
@@ -575,6 +692,10 @@ function performSearch() {
   // Clear existing content
   const content = document.getElementById('content')
   content.innerHTML = ''
+  renderedUrls.clear()
+  renderedItems.clear()
+  dateGroups.clear()
+  closeAllDropdowns()
 
   // Show loading indicator
   const loading = document.getElementById('loading')
@@ -584,139 +705,150 @@ function performSearch() {
   loadMoreHistory(currentSearchRequestId)
 }
 
-function loadOtherDevices() {
-  const otherDevicesDiv = document.getElementById('other-devices-view')
-  otherDevicesDiv.innerHTML = '<div class="loading">Loading synced devices...</div>'
+function getSyncedDevices(forceRefresh = false) {
+  if (!chrome.sessions?.getDevices) {
+    return Promise.reject(new Error('Sync and Sessions API are not available.'))
+  }
 
-  if (!chrome.sessions || !chrome.sessions.getDevices) {
+  if (!forceRefresh && deviceCache?.devices && deviceCache.expiresAt > Date.now()) {
+    return Promise.resolve(deviceCache.devices)
+  }
+  if (!forceRefresh && deviceCache?.promise) return deviceCache.promise
+
+  const promise = new Promise((resolve, reject) => {
+    chrome.sessions.getDevices({ maxResults: 10 }, (devices) => {
+      if (chrome.runtime.lastError) {
+        deviceCache = null
+        reject(new Error(chrome.runtime.lastError.message))
+        return
+      }
+
+      const resolvedDevices = devices || []
+      deviceCache = {
+        devices: resolvedDevices,
+        expiresAt: Date.now() + DEVICE_CACHE_TTL_MS,
+        promise: null,
+      }
+      resolve(resolvedDevices)
+    })
+  })
+
+  deviceCache = { devices: null, expiresAt: 0, promise }
+  return promise
+}
+
+function getDeviceIcon(device) {
+  const name = (device.info || device.deviceName || '').toLowerCase()
+  if (
+    name.includes('phone') ||
+    name.includes('mobile') ||
+    name.includes('android') ||
+    name.includes('iphone')
+  ) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>`
+  }
+  if (name.includes('tablet') || name.includes('ipad')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 0h-13C3.57 0 2 1.57 2 3.5v17C2 22.43 3.57 24 5.5 24h13c1.93 0 3.5-1.57 3.5-3.5v-17C22 1.57 20.43 0 18.5 0zm-13 2h13c.83 0 1.5.67 1.5 1.5v13.5H4V3.5C4 2.67 4.67 2 5.5 2zm13 20h-13c-.83 0-1.5-.67-1.5-1.5V19h16v1.5c0 .83-.67 1.5-1.5 1.5z"/></svg>`
+  }
+  return `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h24v-3h-2V6c0-1.1-.9-2-2-2zM2 17V6h18v11H2zm10 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>`
+}
+
+function createDeviceTab(tab) {
+  const tabItem = document.createElement('a')
+  tabItem.className = 'device-tab-item'
+  tabItem.href = tab.url
+  tabItem.target = '_blank'
+
+  const favicon = document.createElement('img')
+  favicon.className = 'favicon'
+  favicon.loading = 'lazy'
+  favicon.decoding = 'async'
+  favicon.src = getFaviconUrl(tab.url)
+  // Image error handlers remain per image because each fallback depends on its URL.
+  favicon.onerror = () => {
+    const fallbackUrl = `https://www.google.com/s2/favicons?domain=${getHostname(tab.url)}&sz=32`
+    if (favicon.src !== fallbackUrl) {
+      favicon.src = fallbackUrl
+    } else {
+      favicon.src =
+        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'
+    }
+  }
+
+  const details = document.createElement('div')
+  details.className = 'device-tab-details'
+  const title = document.createElement('div')
+  title.className = 'device-tab-title'
+  title.textContent = tab.title || getHostname(tab.url)
+  const url = document.createElement('div')
+  url.className = 'device-tab-url'
+  url.textContent = tab.url
+  details.append(title, url)
+  tabItem.append(favicon, details)
+
+  if (tab.lastActiveTime) {
+    const time = document.createElement('div')
+    time.className = 'device-tab-time'
+    time.textContent = formatTime(new Date(tab.lastActiveTime))
+    tabItem.appendChild(time)
+  }
+  return tabItem
+}
+
+function renderSyncedDevices(devices) {
+  const otherDevicesDiv = document.getElementById('other-devices-view')
+  otherDevicesDiv.innerHTML = ''
+  if (devices.length === 0) {
     otherDevicesDiv.innerHTML =
-      '<div class="no-results">Sync and Sessions API are not available.</div>'
+      '<div class="no-results">No synced devices found. Make sure you are signed in and Sync is turned on.</div>'
     return
   }
 
-  chrome.sessions.getDevices({ maxResults: 10 }, (devices) => {
-    if (chrome.runtime.lastError) {
-      console.error(chrome.runtime.lastError)
-      otherDevicesDiv.innerHTML =
-        '<div class="no-results">Error loading synced devices. Make sure Chrome Sync is enabled.</div>'
-      return
-    }
+  const devicesFragment = document.createDocumentFragment()
+  devices.forEach((device) => {
+    const deviceCard = document.createElement('div')
+    deviceCard.className = 'device-card'
+    const header = document.createElement('div')
+    header.className = 'device-card-header'
+    header.innerHTML = `${getDeviceIcon(device)} <span>${
+      device.info || device.deviceName || 'Other Device'
+    }</span>`
+    deviceCard.appendChild(header)
 
-    otherDevicesDiv.innerHTML = ''
-
-    if (!devices || devices.length === 0) {
-      otherDevicesDiv.innerHTML =
-        '<div class="no-results">No synced devices found. Make sure you are signed in and Sync is turned on.</div>'
-      return
-    }
-
-    devices.forEach((device) => {
-      const deviceCard = document.createElement('div')
-      deviceCard.className = 'device-card'
-
-      const header = document.createElement('div')
-      header.className = 'device-card-header'
-
-      // Select icon based on device type info or name
-      const nameLower = (device.info || device.deviceName || '').toLowerCase()
-      let iconSvg = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h24v-3h-2V6c0-1.1-.9-2-2-2zM2 17V6h18v11H2zm10 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-        </svg>
-      ` // Default laptop
-      if (
-        nameLower.includes('phone') ||
-        nameLower.includes('mobile') ||
-        nameLower.includes('android') ||
-        nameLower.includes('iphone')
-      ) {
-        iconSvg = `
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
-          </svg>
-        ` // Phone
-      } else if (nameLower.includes('tablet') || nameLower.includes('ipad')) {
-        iconSvg = `
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18.5 0h-13C3.57 0 2 1.57 2 3.5v17C2 22.43 3.57 24 5.5 24h13c1.93 0 3.5-1.57 3.5-3.5v-17C22 1.57 20.43 0 18.5 0zm-13 2h13c.83 0 1.5.67 1.5 1.5v13.5H4V3.5C4 2.67 4.67 2 5.5 2zm13 20h-13c-.83 0-1.5-.67-1.5-1.5V19h16v1.5c0 .83-.67 1.5-1.5 1.5z"/>
-          </svg>
-        ` // Tablet
-      }
-
-      header.innerHTML = `${iconSvg} <span>${device.info || device.deviceName || 'Other Device'}</span>`
-      deviceCard.appendChild(header)
-
-      // Collect all tabs from sessions
-      const tabs = []
-      device.sessions.forEach((session) => {
-        if (session.tab) {
-          tabs.push(session.tab)
-        } else if (session.window && session.window.tabs) {
-          session.window.tabs.forEach((tab) => {
-            tabs.push(tab)
-          })
-        }
-      })
-
-      if (tabs.length === 0) {
-        const emptyMsg = document.createElement('div')
-        emptyMsg.className = 'no-results'
-        emptyMsg.style.padding = '10px'
-        emptyMsg.textContent = 'No open tabs'
-        deviceCard.appendChild(emptyMsg)
-      } else {
-        tabs.forEach((tab) => {
-          if (!tab.url || tab.url.trim() === '') return // Skip tabs with empty URLs
-
-          const tabItem = document.createElement('a')
-          tabItem.className = 'device-tab-item'
-          tabItem.href = tab.url
-          tabItem.target = '_blank'
-
-          const favicon = document.createElement('img')
-          favicon.className = 'favicon'
-          favicon.src = getFaviconUrl(tab.url)
-          favicon.onerror = () => {
-            const domain = getHostname(tab.url)
-            const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
-            if (favicon.src !== fallbackUrl) {
-              favicon.src = fallbackUrl
-            } else {
-              favicon.src =
-                'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'
-            }
-          }
-
-          const details = document.createElement('div')
-          details.className = 'device-tab-details'
-
-          const title = document.createElement('div')
-          title.className = 'device-tab-title'
-          title.textContent = tab.title || getHostname(tab.url)
-
-          const url = document.createElement('div')
-          url.className = 'device-tab-url'
-          url.textContent = tab.url
-
-          details.appendChild(title)
-          details.appendChild(url)
-          tabItem.appendChild(favicon)
-          tabItem.appendChild(details)
-
-          if (tab.lastActiveTime) {
-            const time = document.createElement('div')
-            time.className = 'device-tab-time'
-            time.textContent = formatTime(new Date(tab.lastActiveTime))
-            tabItem.appendChild(time)
-          }
-
-          deviceCard.appendChild(tabItem)
-        })
-      }
-
-      otherDevicesDiv.appendChild(deviceCard)
+    const tabs = device.sessions.flatMap((session) =>
+      session.tab ? [session.tab] : session.window?.tabs || []
+    )
+    const tabsFragment = document.createDocumentFragment()
+    tabs.forEach((tab) => {
+      if (tab.url?.trim()) tabsFragment.appendChild(createDeviceTab(tab))
     })
+
+    if (!tabsFragment.childNodes.length) {
+      const emptyMessage = document.createElement('div')
+      emptyMessage.className = 'no-results'
+      emptyMessage.style.padding = '10px'
+      emptyMessage.textContent = 'No open tabs'
+      deviceCard.appendChild(emptyMessage)
+    } else {
+      deviceCard.appendChild(tabsFragment)
+    }
+    devicesFragment.appendChild(deviceCard)
   })
+  otherDevicesDiv.appendChild(devicesFragment)
+}
+
+function loadOtherDevices(forceRefresh = false) {
+  const otherDevicesDiv = document.getElementById('other-devices-view')
+  otherDevicesDiv.innerHTML = '<div class="loading">Loading synced devices...</div>'
+
+  getSyncedDevices(forceRefresh)
+    .then(renderSyncedDevices)
+    .catch((error) => {
+      console.error(error)
+      otherDevicesDiv.innerHTML = chrome.sessions?.getDevices
+        ? '<div class="no-results">Error loading synced devices. Make sure Chrome Sync is enabled.</div>'
+        : '<div class="no-results">Sync and Sessions API are not available.</div>'
+    })
 }
 
 function debounceSearch(func, delay) {
@@ -724,9 +856,25 @@ function debounceSearch(func, delay) {
   searchTimeout = setTimeout(func, delay)
 }
 
+function setupHistoryObserver() {
+  const sentinel = document.getElementById('history-sentinel')
+  historyObserver = new IntersectionObserver(
+    (entries) => {
+      const historyVisible = document.getElementById('content').style.display !== 'none'
+      if (historyVisible && entries.some((entry) => entry.isIntersecting)) {
+        loadMoreHistory(currentSearchRequestId)
+      }
+    },
+    { rootMargin: '1000px 0px' }
+  )
+  historyObserver.observe(sentinel)
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Create the global dropdown menu
   createGlobalDropdownMenu()
+  document.getElementById('content').addEventListener('click', handleContentClick)
+  setupHistoryObserver()
 
   // Add search functionality
   const searchInput = document.querySelector('.search-bar input')
@@ -762,11 +910,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const contentDiv = document.getElementById('content')
   const otherDevicesDiv = document.getElementById('other-devices-view')
   const searchContainer = document.querySelector('.search-container')
+  const historySentinel = document.getElementById('history-sentinel')
 
   navHistory.addEventListener('click', () => {
     navHistory.classList.add('active')
     navOtherDevices.classList.remove('active')
     contentDiv.style.display = 'block'
+    historySentinel.style.display = 'block'
     otherDevicesDiv.style.display = 'none'
     searchContainer.style.display = 'flex'
     checkDeviceFilterVisibility()
@@ -778,6 +928,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navHistory.classList.remove('active')
     navOtherDevices.classList.add('active')
     contentDiv.style.display = 'none'
+    historySentinel.style.display = 'none'
     otherDevicesDiv.style.display = 'block'
     searchContainer.style.display = 'none'
     document.getElementById('filter-device-container').style.display = 'none'
@@ -825,24 +976,39 @@ function checkDeviceFilterVisibility() {
     return
   }
 
-  if (chrome.sessions && chrome.sessions.getDevices) {
-    chrome.sessions.getDevices({ maxResults: 1 }, (devices) => {
-      const hasDevices = !chrome.runtime.lastError && devices && devices.length > 0
-      if (filterDeviceContainer) {
-        filterDeviceContainer.style.display = hasDevices ? 'flex' : 'none'
-      }
-    })
+  if (chrome.sessions?.getDevices) {
+    getSyncedDevices()
+      .then((devices) => {
+        if (filterDeviceContainer) {
+          filterDeviceContainer.style.display = devices.length > 0 ? 'flex' : 'none'
+        }
+      })
+      .catch(() => {
+        if (filterDeviceContainer) filterDeviceContainer.style.display = 'none'
+      })
   } else {
     if (filterDeviceContainer) filterDeviceContainer.style.display = 'none'
   }
 }
 
-window.addEventListener('scroll', () => {
-  const content = document.getElementById('content')
-  if (
-    content.style.display !== 'none' &&
-    window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000
-  ) {
-    loadMoreHistory(currentSearchRequestId)
+chrome.history.onVisited.addListener((item) => {
+  if (!item.url) return
+  invalidateVisitStatus(item.url)
+  const row = renderedItems.get(item.url)
+  if (row?.isConnected) {
+    getVisitStatus(item.url).then((isLocal) => updateSyncedBadge(row, isLocal))
   }
+})
+
+chrome.history.onVisitRemoved.addListener((removed) => {
+  if (removed.allHistory) {
+    visitStatusCache.clear()
+    visitStatusVersions.clear()
+  } else {
+    removed.urls.forEach(invalidateVisitStatus)
+  }
+})
+
+chrome.sessions?.onChanged?.addListener(() => {
+  deviceCache = null
 })

@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import * as ts from 'typescript'
+// TypeScript 7 does not yet expose the public compiler API used by this script.
+import * as ts from 'typescript-compiler-api'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
