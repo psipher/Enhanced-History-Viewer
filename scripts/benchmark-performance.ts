@@ -194,12 +194,12 @@ async function startHistoryServer(): Promise<{
   baseUrl: string
   close: () => Promise<void>
 }> {
-  const server = http.createServer((request, response) => {
+  const server = http.createServer((_request, response) => {
     response.writeHead(200, {
       'Cache-Control': 'no-store',
       'Content-Type': 'text/html; charset=utf-8',
     })
-    response.end(`<!doctype html><title>Benchmark ${request.url}</title><p>${request.url}</p>`)
+    response.end('<!doctype html><title>Benchmark page</title><p>Benchmark page</p>')
   })
 
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
