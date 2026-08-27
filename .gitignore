@@ -7,3 +7,4 @@ docs/CODE_HEALTH.md
 docs/CODEBASE_GRAPH.md
 docs/codebase_map.json
 .performance-results/
+dist/
