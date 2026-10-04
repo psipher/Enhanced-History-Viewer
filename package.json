@@ -1,6 +1,6 @@
 {
   "name": "enhanced-history-viewer",
-  "version": "1.7.1",
+  "version": "1.7.0",
   "description": "View your Chrome browsing history with full URLs",
   "private": true,
   "scripts": {
