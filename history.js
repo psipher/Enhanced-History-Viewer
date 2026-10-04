@@ -51,7 +51,7 @@ function formatTime(date) {
 }
 
 function formatRelativeTime(timestamp) {
-  const diffMinutes = Math.round((Date.now() - timestamp) / 60000)
+  const diffMinutes = Math.floor((Date.now() - timestamp) / 60000)
   if (diffMinutes < 1) return 'just now'
   const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
   if (diffMinutes < 60) return rtf.format(-diffMinutes, 'minute')
@@ -117,7 +117,12 @@ function showNoResults(message) {
   content.appendChild(noResults)
 }
 
+// Track which anchor's menu is open so a second click on the same anchor
+// toggles it closed, matching native behavior
+let openMenuAnchor = null
+
 function closeAllDropdowns() {
+  openMenuAnchor = null
   document.querySelectorAll('.dropdown-menu.show').forEach((menu) => {
     menu.classList.remove('show')
   })
@@ -629,6 +634,10 @@ function performSearch() {
 }
 
 function openItemMenu(menuButton, url) {
+  if (openMenuAnchor === menuButton) {
+    closeAllDropdowns()
+    return
+  }
   // Get or create the global dropdown menu
   const dropdownMenu = createGlobalDropdownMenu()
 
@@ -690,6 +699,7 @@ function openItemMenu(menuButton, url) {
 
   // Show the dropdown
   dropdownMenu.classList.add('show')
+  openMenuAnchor = menuButton
 
   // Position the dropdown below the clicked menu button, aligned to its right
   const menuRect = menuButton.getBoundingClientRect()
@@ -718,6 +728,10 @@ function openItemMenu(menuButton, url) {
 // Device group menu: "Open all" opens every synced tab from the device in
 // background tabs; "Hide for now" collapses the group without forgetting it
 function openDeviceMenu(anchor, tabs, group, header) {
+  if (openMenuAnchor === anchor) {
+    closeAllDropdowns()
+    return
+  }
   const dropdownMenu = createGlobalDropdownMenu()
   dropdownMenu.innerHTML = ''
 
@@ -746,6 +760,7 @@ function openDeviceMenu(anchor, tabs, group, header) {
 
   closeAllDropdowns()
   dropdownMenu.classList.add('show')
+  openMenuAnchor = anchor
 
   // Position below the kebab, aligned to its right edge
   const anchorRect = anchor.getBoundingClientRect()
@@ -850,7 +865,11 @@ function loadOtherDevices() {
       return
     }
 
-    hasSyncedDevices = devices && devices.length > 0
+    // Only cache a positive result — an empty list may mean Sync is still
+    // starting up, so a later check should query again
+    if (devices && devices.length > 0) {
+      hasSyncedDevices = true
+    }
     otherDevicesDiv.innerHTML = ''
 
     if (!devices || devices.length === 0) {
@@ -881,6 +900,7 @@ function loadOtherDevices() {
       header.className = 'device-group-header'
       header.setAttribute('role', 'button')
       header.setAttribute('aria-expanded', 'true')
+      header.tabIndex = 0
 
       // Select icon based on device type info or name
       const nameLower = (device.info || device.deviceName || '').toLowerCase()
@@ -935,10 +955,18 @@ function loadOtherDevices() {
       kebab.className = 'device-kebab'
       kebab.setAttribute('role', 'button')
       kebab.setAttribute('aria-label', 'Device options')
+      kebab.tabIndex = 0
       kebab.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>`
       kebab.addEventListener('click', (e) => {
         e.stopPropagation()
         openDeviceMenu(kebab, tabs, group, header)
+      })
+      kebab.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          e.stopPropagation()
+          openDeviceMenu(kebab, tabs, group, header)
+        }
       })
       header.appendChild(kebab)
 
@@ -950,6 +978,13 @@ function loadOtherDevices() {
       header.addEventListener('click', () => {
         const collapsed = group.classList.toggle('collapsed')
         header.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
+      })
+
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          header.click()
+        }
       })
 
       group.appendChild(header)
@@ -988,6 +1023,10 @@ function loadOtherDevices() {
       group.appendChild(tabsWrap)
       otherDevicesDiv.appendChild(group)
     })
+
+    // Re-apply any active search text to the freshly rendered groups (the
+    // filter runs after the async render, not before it)
+    filterDeviceTabs(document.querySelector('.search-bar input').value)
   })
 }
 
@@ -1090,8 +1129,10 @@ document.addEventListener('DOMContentLoaded', () => {
     searchContainer.style.display = 'flex'
     document.getElementById('filter-device-container').style.display = 'none'
     clearSelection()
+    // A pending history-search debounce must not fire while the devices view
+    // is showing; the devices filter is re-applied after the groups render
+    clearTimeout(searchTimeout)
     loadOtherDevices()
-    filterDeviceTabs(searchInput.value)
   })
 
   // Add click listener for Local Only Checkbox
@@ -1157,8 +1198,12 @@ function checkDeviceFilterVisibility() {
         apply(false)
         return
       }
-      hasSyncedDevices = devices && devices.length > 0
-      apply(hasSyncedDevices)
+      if (devices && devices.length > 0) {
+        // Cache only a positive result — an empty list may mean Sync is
+        // still starting up, so the next check should query again
+        hasSyncedDevices = true
+      }
+      apply(hasSyncedDevices === true)
     })
   } else {
     hasSyncedDevices = false
