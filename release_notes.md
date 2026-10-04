@@ -1,33 +1,24 @@
 # Release Notes - Version 1.7
 
-**Version 1.7** of the Enhanced History Viewer is the largest update yet: a ground-up performance and privacy overhaul of the history renderer, combined with correctness and security fixes surfaced by a systematic bug investigation.
+**Version 1.7** of the Enhanced History Viewer rebuilds the history renderer with a focus on correctness and speed where it counts, redesigns the "Tabs from other devices" view, and fixes a series of edge-case bugs surfaced by systematic investigations.
 
 ---
 
 ## What's New in v1.7
 
-### 1. Instant Loading
+### 1. Faster Where It Counts
 
-- **Non-Blocking Rendering**: History items now render immediately without waiting for device-status lookups; the synced-device badges resolve quietly in the background right after.
-- **Zero Visual Compromise**: The "This device only" filter still pre-resolves visit data up front, so filtering behavior is unchanged.
-- **Measured**: First paint is up to 2× faster than v1.6 in our benchmarks, and rendering 1,000 items is just as fast — with every entry included and no console errors.
+- **Parallel Device-Status Lookups**: The "This device only" filter resolves a page's device status in a single round instead of a throttled queue — filtered views render several times faster whenever Chrome's history database is slow to answer.
+- **Repeat-Search Cache**: Device-status results are remembered for 60 seconds, so repeating or refining a search doesn't re-query the History API.
+- **Live History Updates**: The page now listens for visits and deletions that happen elsewhere — badges and rows stay current in real time.
+- **Fast Page Opens**: A minimal service worker keeps Chrome's extension process warm, preserving the snappy history-page open from earlier versions.
 
 ### 2. Leaner Permissions & Zero External Requests
 
 - **No Host Permissions**: Removed host access to `google.com` — favicons now resolve entirely through Chrome's local favicon API. The `tabs` permission is kept because the "Tabs from other devices" view needs synced tabs' URLs and titles, which Chrome hides without it.
 - **Zero External Requests**: Removed the render-blocking Google Fonts stylesheet, and the favicon fallback now uses a local placeholder instead of sending hostnames from your history to Google. The extension no longer talks to any external server, ever.
-- **Background Service Worker Removed**: Dead code eliminated — the extension page handles everything it needs directly.
 
-### 3. Smarter Rendering & Memory Use
-
-- **Delegated Event Handling**: A single shared click listener replaces the hundreds of per-item listeners on long histories.
-- **Map-Based Deduplication**: Rendered URLs and date groups are tracked in memory instead of re-querying the DOM, which also fixes a bug where URLs containing quotes could break deduplication.
-- **Locale-Proof Date Grouping**: Days are grouped and sorted numerically instead of by formatted strings, fixing incorrect ordering under non-English locales.
-- **Batched DOM Inserts**: Each date group is assembled off-screen and attached in a single operation, reducing layout thrash.
-- **Observer-Driven Infinite Scroll**: A sentinel-based IntersectionObserver replaces per-scroll-event work for smoother scrolling.
-- **Lazy Favicons**: Favicons below the fold now load on demand instead of all at once.
-
-### 4. A Refreshed "Tabs from Other Devices" View
+### 3. A Refreshed "Tabs from Other Devices" View
 
 - **Collapsible Device Groups**: Each device is now a clean, native-style section that you can collapse or expand with a single click.
 - **Relative Timestamps**: Device headers show when they were last active ("– 23 minutes ago"), localized to your language.
@@ -35,7 +26,7 @@
 - **Search Synced Tabs**: The search bar stays visible on this view and now filters tabs across your devices as you type.
 - **Native-Aligned Typography**: Compact search bar, larger date headers, and a clearer active-page highlight in dark mode, using your system font.
 
-### 5. Correctness Fixes
+### 4. Correctness Fixes
 
 - **No More Silent Blank Views**: When "This device only" filters out every remaining result, the page now clearly states that no history from this device was found instead of showing an empty list.
 - **No More Skipped Entries**: History entries that share the exact same timestamp across a page boundary (common with redirect chains) are no longer dropped from the list.
@@ -46,7 +37,7 @@
 - **Accurate Date Headers**: "Today" and "Yesterday" group headers update correctly if the page stays open past midnight.
 - **More Synced Devices**: The "Tabs from other devices" view now lists up to 25 devices (the browser's maximum) instead of 10.
 
-### 6. Security Hardening
+### 5. Security Hardening
 
 - **No Reverse Tab-Nabbing**: Sites opened from history rows or synced-device tabs no longer receive a handle (`window.opener`) to the history page.
 

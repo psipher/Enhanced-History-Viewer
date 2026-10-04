@@ -1052,6 +1052,34 @@ function debounceSearch(func, delay) {
   searchTimeout = setTimeout(func, delay)
 }
 
+// Keep device-status badges and the visit cache in sync with history changes
+// that happen elsewhere (browsing in another tab, deletions from other
+// surfaces). Removals are idempotent with our own delete paths.
+if (chrome.history.onVisited && chrome.history.onVisitRemoved) {
+  chrome.history.onVisited.addListener((visit) => {
+    if (!visit.url) return
+    visitStatusCache.delete(visit.url)
+    // A fresh visit from this device makes the URL local again
+    const element = itemElements.get(visit.url)
+    if (element) {
+      element.querySelector('.synced-badge')?.remove()
+    }
+  })
+
+  chrome.history.onVisitRemoved.addListener((removed) => {
+    if (removed.allHistory) {
+      visitStatusCache.clear()
+      return
+    }
+    ;(removed.urls || []).forEach((url) => {
+      visitStatusCache.delete(url)
+      if (itemElements.has(url)) {
+        removeHistoryItemByUrl(url)
+      }
+    })
+  })
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Create the global dropdown menu
   createGlobalDropdownMenu()
