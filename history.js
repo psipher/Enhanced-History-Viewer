@@ -664,6 +664,7 @@ function openItemMenu(menuButton, url) {
   // Add menu items
   const moreFromSite = document.createElement('div')
   moreFromSite.className = 'dropdown-item'
+  moreFromSite.dataset.action = 'more-from-site'
   moreFromSite.textContent = 'More from this site'
   moreFromSite.addEventListener('click', (e) => {
     e.stopPropagation()
@@ -675,6 +676,7 @@ function openItemMenu(menuButton, url) {
 
   const removeFromHistory = document.createElement('div')
   removeFromHistory.className = 'dropdown-item'
+  removeFromHistory.dataset.action = 'remove'
   removeFromHistory.textContent = 'Remove from history'
   removeFromHistory.addEventListener('click', (e) => {
     e.stopPropagation()
@@ -692,6 +694,7 @@ function openItemMenu(menuButton, url) {
 
   const copyUrl = document.createElement('div')
   copyUrl.className = 'dropdown-item'
+  copyUrl.dataset.action = 'copy'
   copyUrl.textContent = 'Copy URL'
   copyUrl.addEventListener('click', (e) => {
     e.stopPropagation()
@@ -754,6 +757,7 @@ function openDeviceMenu(anchor, tabs, group, header) {
 
   const openAll = document.createElement('div')
   openAll.className = 'dropdown-item'
+  openAll.dataset.action = 'open-all'
   openAll.textContent = 'Open all'
   openAll.addEventListener('click', (e) => {
     e.stopPropagation()
@@ -764,6 +768,7 @@ function openDeviceMenu(anchor, tabs, group, header) {
 
   const hideForNow = document.createElement('div')
   hideForNow.className = 'dropdown-item'
+  hideForNow.dataset.action = 'hide-for-now'
   hideForNow.textContent = 'Hide for now'
   hideForNow.addEventListener('click', (e) => {
     e.stopPropagation()

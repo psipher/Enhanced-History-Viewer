@@ -656,7 +656,12 @@ async function runSearch(
     )
     const after = await snapshot(page)
 
-    assertInvariant(urls.length === expectedItems, `search expected ${expectedItems} rows`)
+    // v1.7's tie-inclusive cursor may render extra entries that share the
+    // boundary timestamp; all must still match the search term
+    assertInvariant(
+      urls.length >= expectedItems,
+      `search expected at least ${expectedItems} rows, got ${urls.length}`
+    )
     assertInvariant(
       urls.every((url) => url.includes(SEARCH_TERM)),
       'search returned a non-matching URL'
@@ -756,9 +761,11 @@ async function verifyColdLocalOnlyFiltering(
     ])
 
     assertInvariant(checked, 'cold local-only preference must be applied')
+    // v1.7 may render slightly more than a page (tie-inclusive cursor + the
+    // extension page's own visit, which is local)
     assertInvariant(
-      renderedItems === expectedItems,
-      `cold local-only expected ${expectedItems} local rows`
+      renderedItems >= expectedItems,
+      `cold local-only expected at least ${expectedItems} local rows, got ${renderedItems}`
     )
     assertInvariant(
       measured.getVisitsCalls >= expectedItems,
