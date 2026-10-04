@@ -445,38 +445,55 @@ function resetContentView() {
   itemElements.clear()
 }
 
+// Short-lived cache so repeat searches don't re-query visit status for URLs
+// resolved moments ago (an idea adopted from the previous main implementation)
+const visitStatusCache = new Map() // url -> { isLocal, expiresAt }
+const VISIT_STATUS_TTL_MS = 60 * 1000
+
 // Resolve which items were visited on this device (synced items have isLocal === false)
 function resolveLocalStatus(items) {
   return Promise.all(
-    items.map(
-      (item) =>
-        new Promise((resolve) => {
-          let settled = false
-          const done = (isLocal) => {
-            if (!settled) {
-              settled = true
-              resolve({ item, isLocal })
-            }
-          }
+    items.map((item) => {
+      const cached = visitStatusCache.get(item.url)
+      if (cached && cached.expiresAt > Date.now()) {
+        item.isLocal = cached.isLocal
+        return Promise.resolve({ item, isLocal: cached.isLocal })
+      }
+      if (cached) {
+        visitStatusCache.delete(item.url)
+      }
 
-          // Safety net: treat the visit as local if the API never calls back,
-          // so a hung lookup can never wedge pagination
-          const timeout = setTimeout(() => done(true), 10000)
-          chrome.history.getVisits({ url: item.url }, (visits) => {
-            clearTimeout(timeout)
-            if (chrome.runtime.lastError) {
-              console.error(chrome.runtime.lastError)
-              done(true)
-              return
-            }
-            let latest = null
-            for (const visit of visits || []) {
-              if (!latest || visit.visitTime > latest.visitTime) latest = visit
-            }
-            done(latest ? latest.isLocal !== false : true)
-          })
+      return new Promise((resolve) => {
+        let settled = false
+        const done = (isLocal) => {
+          if (!settled) {
+            settled = true
+            visitStatusCache.set(item.url, {
+              isLocal,
+              expiresAt: Date.now() + VISIT_STATUS_TTL_MS,
+            })
+            resolve({ item, isLocal })
+          }
+        }
+
+        // Safety net: treat the visit as local if the API never calls back,
+        // so a hung lookup can never wedge pagination
+        const timeout = setTimeout(() => done(true), 10000)
+        chrome.history.getVisits({ url: item.url }, (visits) => {
+          clearTimeout(timeout)
+          if (chrome.runtime.lastError) {
+            console.error(chrome.runtime.lastError)
+            done(true)
+            return
+          }
+          let latest = null
+          for (const visit of visits || []) {
+            if (!latest || visit.visitTime > latest.visitTime) latest = visit
+          }
+          done(latest ? latest.isLocal !== false : true)
         })
-    )
+      })
+    })
   )
 }
 
