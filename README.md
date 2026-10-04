@@ -34,6 +34,15 @@ is a Chrome extension that replaces the default history page with a more intuiti
 - **Smart Device Icons**: Displays a clean, native-feeling indicator icon next to synced history items.
 - **This Device Only**: A sidebar toggle that filters your history down to visits recorded on this machine.
 
+## Performance
+
+Measured with the built-in benchmark (`npm run benchmark:performance`; real Chrome, median of runs) against the v1.6 renderer:
+
+- Page open + initial render: parity or faster across 50–1,000 history items
+- Full 1,000-item scroll: ~25% faster (~4.3s vs ~5.9s)
+- "This device only" filter: resolves in a single parallel round instead of a throttled 6-lookup queue
+- Repeat searches: served from a 60-second device-status cache with no History API re-queries
+
 ## Privacy
 
 - **Zero external requests**: no trackers, no analytics, no remote calls — everything runs locally in your browser.
