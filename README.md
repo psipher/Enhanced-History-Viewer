@@ -3,16 +3,43 @@
 [Enhanced History Viewer](https://chromewebstore.google.com/detail/enhanced-history-viewer/pcojfenpnmoghjejjdkmbngpcmflmdfm?hl=en-US)
 is a Chrome extension that replaces the default history page with a more intuitive and feature-rich interface. It provides a clean, modern design for browsing your Chrome history with full URL display and improved search functionality.
 
+## Screenshots
+
+| Light mode                                                               | Dark mode                                                              |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| ![History view in light mode](docs/screenshots/2-history-main-light.png) | ![History view in dark mode](docs/screenshots/1-history-main-dark.png) |
+
+| Bulk selection                                                                  | Tabs from other devices                                               |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| ![Bulk selection with delete action bar](docs/screenshots/3-bulk-selection.png) | ![Tabs from other devices](docs/screenshots/6-other-devices-dark.png) |
+
+| Instant search                                                              | Item menu                                                   |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| ![Instant search with grouped results](docs/screenshots/5-search-light.png) | ![Item context menu](docs/screenshots/4-item-menu-dark.png) |
+
+**"This device only" filter** — one toggle shows only the history recorded on this machine:
+
+![This device only filter active](docs/screenshots/7-this-device-only-light.png)
+
 ## Features
 
 - **Modern Interface**: Clean, responsive design with support for both light and dark modes.
 - **Full URL Display**: See the complete URL for each history item at a glance.
-- **Fast Search**: Quickly find specific history items with responsive search functionality.
+- **Fast Search**: Quickly find specific history items with responsive, as-you-type search.
+- **Date Grouping**: History is grouped under readable, locale-aware "Today" / "Yesterday" headers.
 - **Infinite Scrolling**: Easily browse through your entire history without pagination.
 - **Chrome Integration**: Seamlessly replaces Chrome's built-in history page.
 - **Bulk Operations**: Select multiple history items at once and delete them in parallel with a single click.
-- **Tabs from other devices**: View and open tabs currently active on your synced phones, tablets, and computers from a dedicated sidebar tab.
+- **Tabs from other devices**: View and open tabs currently active on your synced phones, tablets, and computers from a dedicated sidebar tab — with collapsible device groups, relative last-active times, per-device "Open all" / "Hide for now" menus, and live search across synced tabs.
 - **Smart Device Icons**: Displays a clean, native-feeling indicator icon next to synced history items.
+- **This Device Only**: A sidebar toggle that filters your history down to visits recorded on this machine.
+
+## Privacy
+
+- **Zero external requests**: no trackers, no analytics, no remote calls — everything runs locally in your browser.
+- Favicons are resolved locally through Chrome's built-in favicon API; a local placeholder is used when an icon is unavailable.
+- The extension stores a single preference locally (`This device only` on/off) and collects nothing.
+- The code is fully open-source — audit it right here in this repository.
 
 ## Installation
 
@@ -58,8 +85,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - Icons provided by [Google Material Design Icons](https://material.io/resources/icons/).
-- Favicon retrieval using Google's favicon service.
-
-## Support
-
-If you encounter any issues or have suggestions for improvements, please open an issue in this repository.

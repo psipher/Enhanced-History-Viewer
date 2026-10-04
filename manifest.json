@@ -1,15 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Enhanced History Viewer",
-  "version": "1.5",
+  "version": "1.7.0",
   "description": "View your Chrome browsing history with full URLs",
+  "minimum_chrome_version": "115",
   "permissions": ["history", "favicon", "sessions", "tabs"],
-  "host_permissions": ["https://www.google.com/s2/*"],
   "chrome_url_overrides": {
     "history": "history.html"
-  },
-  "background": {
-    "service_worker": "background.js"
   },
   "icons": {
     "16": "icon16.png",
