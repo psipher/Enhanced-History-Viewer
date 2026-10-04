@@ -38,7 +38,8 @@ function getSourceFiles(dir: string, fileList: string[] = []): string[] {
         file !== '.git' &&
         file !== '.vscode' &&
         file !== 'docs' &&
-        file !== 'scripts'
+        file !== 'scripts' &&
+        file !== 'scratch'
       ) {
         getSourceFiles(filePath, fileList)
       }
