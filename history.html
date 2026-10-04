@@ -115,6 +115,8 @@
         margin-right: auto;
         position: relative;
         overflow: hidden;
+        content-visibility: auto;
+        contain-intrinsic-size: auto 300px;
       }
 
       .date-header {
@@ -373,6 +375,12 @@
       }
 
       #content {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      #history-sentinel {
+        height: 1px;
         max-width: 800px;
         margin: 0 auto;
       }
@@ -743,6 +751,7 @@
           </div>
         </div>
         <div id="content"></div>
+        <div id="history-sentinel" aria-hidden="true"></div>
         <div id="other-devices-view" style="display: none"></div>
         <div id="loading" class="loading" style="display: none">Loading more history...</div>
       </div>

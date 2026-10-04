@@ -8,7 +8,9 @@
     "lint": "oxlint",
     "format": "prettier --write .",
     "map-codebase": "tsx scripts/map-codebase.ts",
-    "check-code-health": "tsx scripts/check-code-health.ts"
+    "check-code-health": "tsx scripts/check-code-health.ts",
+    "benchmark:performance": "tsx scripts/benchmark-performance.ts",
+    "test:performance": "tsx scripts/benchmark-performance.ts --invariants"
   },
   "repository": {
     "type": "git",
@@ -22,10 +24,12 @@
   },
   "homepage": "https://github.com/psipher/Enhanced-History-Viewer#readme",
   "devDependencies": {
-    "@types/node": "^26.0.0",
-    "oxlint": "^1.69.0",
-    "prettier": "^3.7.4",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "@types/node": "^26.4.0",
+    "oxlint": "^1.80.0",
+    "prettier": "^3.9.6",
+    "puppeteer": "^25.9.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "typescript-compiler-api": "npm:typescript@^6.0.3"
   }
 }
